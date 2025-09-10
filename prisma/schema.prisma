@@ -23,15 +23,18 @@ model User {
   image         String?
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
-  Logs          Logs[]
+  Logs          Log[]
   category      category[]
 }
 
-model Logs {
-  id     String      @id @default(auto()) @map("_id") @db.ObjectId
-  logs   logstypes[]
-  userId String      @map("user_id") @db.ObjectId
-  user   User        @relation(references: [id], fields: [userId])
+model Log {
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  category   String
+  startedAt  DateTime
+  finishedAt DateTime?
+  status     status
+  userId     String    @map("user_id") @db.ObjectId
+  user       User      @relation(references: [id], fields: [userId])
 }
 
 model category {
@@ -41,8 +44,7 @@ model category {
   user     User   @relation(references: [id], fields: [userId])
 }
 
-type logstypes {
-  duration  String?
-  category  String
-  startedAt DateTime
+enum status {
+  Running
+  Stopped
 }
