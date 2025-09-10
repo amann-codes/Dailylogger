@@ -4,6 +4,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Provider } from "@/components/layout/Provider";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query"
+import { Toaster } from "@/components/ui/sonner";
+import { UserButton } from "@/components/layout/userButton";
+import { Header } from "@/components/layout/header";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,9 +28,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      ><QueryClientProvider client={queryClient} >
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <QueryClientProvider client={queryClient} >
           <Provider>
+            <Header />
+            <Toaster position="bottom-right" />
             {children}
           </Provider>
         </QueryClientProvider>
