@@ -7,6 +7,7 @@ import { createLog } from "@/lib/actions/createLog"
 import getRunningLog from "@/lib/actions/getRunningLog"
 import { udpateLogStatus } from "@/lib/actions/updateLogStatus"
 import { toast } from "sonner"
+import { Header } from "@/components/layout/header"
 
 export default function ActivityPage() {
     const queryClient = useQueryClient()
@@ -39,6 +40,7 @@ export default function ActivityPage() {
 
     return (
         <div className="flex flex-col min-h-screen w-full sm:items-center sm:justify-center sm:space-y-4">
+            <Header />
             <CreateLog
                 handleCreate={(category, startedAt) => createLogMutation({ finishedAt: null, category, startedAt })}
                 handleUpdate={updateLogMutation}
