@@ -5,24 +5,21 @@ import type { NextRequest } from "next/server";
 export async function middleware(request: NextRequest) {
     const session = await auth();
     const { pathname } = request.nextUrl;
-
     const isLoggedIn = !!session?.user;
 
     const isAuthPage = pathname.startsWith("/signin") || pathname.startsWith("/signup");
-    const isProtectedPage = pathname.startsWith("/");
     if (isLoggedIn && isAuthPage) {
         return NextResponse.redirect(new URL("/", request.url));
     }
 
-    if (!isLoggedIn && isProtectedPage) {
+    if (!isLoggedIn && !isAuthPage) {
         return NextResponse.redirect(new URL("/signin", request.url));
     }
 
     return NextResponse.next();
 }
-
 export const config = {
     matcher: [
-        "/((?!api|_next/static|_next/image|signin|.*\\.png$).*)",
+        "/((?!api|_next/static|_next/image|favicon.ico).*)",
     ],
 };
