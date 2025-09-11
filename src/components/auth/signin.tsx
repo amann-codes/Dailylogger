@@ -37,7 +37,7 @@ export default function SignIn() {
             });
             console.log(res);
             if (res?.ok) {
-                toast("Logged in successfully redirecting to dashboard");
+                toast("Logged in successfully redirecting to your activity page");
                 setTimeout(() => redirect('/'), 200)
             }
             if (res?.error == "CredentialsSignin") {
