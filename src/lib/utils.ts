@@ -33,6 +33,14 @@ export const duration = (start: Date, finish: Date) => {
   const remainderSeconds = seconds % 60
   return `${String(hours).padStart(2, "0")}:${String(remainderMinutes).padStart(2, "0")}:${String(remainderSeconds).padStart(2, "0")}`
 }
-export const getInitials = (name: string) => {
-  return name.split(" ").map(word => word.charAt(0)).join();
-} 
+
+export function getInitials(name: string = ""): string {
+  if (!name) return "";
+
+  return name
+    .trim()
+    .split(/\s+/)
+    .map(word => word[0]?.toUpperCase() || "")
+    .slice(0, 2)
+    .join("");
+}
