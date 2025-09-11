@@ -1,17 +1,24 @@
-import { getToken } from "next-auth/jwt";
-import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-export async function middleware(req: NextRequest) {
-    const token = await getToken({ req, secret: process.env.AUTH_SECRET });
-    const isLoggedIn = !!token;
+export async function middleware(request: NextRequest) {
+    const session = await auth();
+    const { pathname } = request.nextUrl;
 
-    if (!isLoggedIn) {
-        const signInUrl = new URL("/signin", req.url);
-        signInUrl.searchParams.set("callbackUrl", req.url);
-        return NextResponse.redirect(signInUrl);
+    const isLoggedIn = !!session?.user;
+
+    const isAuthPage = pathname.startsWith("/signin") || pathname.startsWith("/signup");
+    const isProtectedPage = pathname.startsWith("/");
+    if (isLoggedIn && isAuthPage) {
+        return NextResponse.redirect(new URL("/", request.url));
     }
 
-    return null;
+    if (!isLoggedIn && isProtectedPage) {
+        return NextResponse.redirect(new URL("/signin", request.url));
+    }
+
+    return NextResponse.next();
 }
 
 export const config = {

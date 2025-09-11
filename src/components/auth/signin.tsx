@@ -2,7 +2,7 @@
 
 import React from "react";
 import { signIn, useSession } from "next-auth/react";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,10 +17,7 @@ interface SignInForm {
 }
 
 export default function SignIn() {
-    const session = useSession();
-    if (session?.status == "authenticated") {
-        redirect("/");
-    }
+    const router = useRouter();
     const {
         register,
         handleSubmit,
@@ -33,20 +30,16 @@ export default function SignIn() {
                 redirect: false,
                 email: data.email,
                 password: data.password,
-                callbackUrl: "/",
             });
-            console.log(res);
             if (res?.ok) {
-                toast("Logged in successfully redirecting to your activity page");
-                setTimeout(() => redirect('/'), 200)
+                toast("Logged in successfully!");
+                router.push("/");
             }
-            if (res?.error == "CredentialsSignin") {
+            if (res?.error) {
                 toast.error("Incorrect password or email address");
             }
         } catch (e) {
-            toast.error("An unexpected error occurred", {
-                description: "Error",
-            });
+            toast.error("An unexpected error occurred");
         }
     };
 
