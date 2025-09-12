@@ -26,20 +26,27 @@ export default function SignIn() {
 
     const onSubmit = async (data: SignInForm) => {
         try {
-            const res = await signIn("credentials", {
+            const res = await signIn('credentials', {
                 redirect: false,
                 email: data.email,
                 password: data.password,
             });
-            if (res?.ok) {
-                toast("Logged in successfully!");
-                router.push("/");
+
+            if (res?.url) {
+                toast('Signed in successfully!');
+                router.push('/');
+                return;
             }
-            if (res?.error) {
-                toast.error("Incorrect password or email address");
+            if (res?.error === 'CredentialsSignin') {
+                toast.error('Invalid email or password. Please try again.');
+                return;
+            }
+            if (!res?.ok) {
+                toast.error('Sign-in failed. Please check your connection and try again.');
             }
         } catch (e) {
-            toast.error("An unexpected error occurred");
+            console.error('Unexpected sign-in error:', e);
+            toast.error('An unexpected error occurred. Please try again later.');
         }
     };
 

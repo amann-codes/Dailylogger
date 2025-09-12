@@ -37,9 +37,7 @@ export default function SignUp() {
     const signUpMutation = useMutation({
         mutationFn: signUp,
         onSuccess: () => {
-            toast.success("Account created successfully!", {
-                description: "Please sign in to continue.",
-            });
+            toast.success("Account created successfully!, Please sign in to continue");
             router.push("/signin");
         },
     });
