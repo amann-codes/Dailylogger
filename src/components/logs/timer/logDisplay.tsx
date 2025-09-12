@@ -17,7 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 export function LogsDisplay() {
     const [sort, setSort] = useState<Sort>(Sort.desc);
-    const [date, setDate] = useState<Date>(new Date());
+    const [date, setDate] = useState<Date>(new Date(new Date().setHours(0, 0, 0, 0)));
     const [viewMode, setViewMode] = useState<"table" | "card">("table");
 
     const getLogsQuery = useQuery<Log[], Error>({
