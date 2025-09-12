@@ -52,6 +52,7 @@ export function LogsDisplay() {
                         </CardContent>
                     </Card>
                     <Button
+                        disabled={getLogsQuery.data?.length == 0}
                         className="p-2 rounded-md border border-muted-foreground/20 bg-background hover:bg-muted/50 transition-colors shadow-sm"
                         onClick={() => setSort((val) => (val === Sort.desc ? Sort.asc : Sort.desc))}
                         aria-label={`Sort logs ${sort === Sort.desc ? "ascending" : "descending"}`}
