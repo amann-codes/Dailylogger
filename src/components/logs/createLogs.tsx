@@ -35,6 +35,7 @@ export function CreateLog({ handleCreate, handleUpdate, isCreating, isUpdating, 
     const baseElapsedRef = useRef(0)
     const startAtRef = useRef<number | null>(null)
     const rafRef = useRef<number | null>(null)
+    const isInitialized = useRef<boolean>(false);
 
     const start = () => {
         if (running) return
@@ -65,6 +66,7 @@ export function CreateLog({ handleCreate, handleUpdate, isCreating, isUpdating, 
         if (rafRef.current) cancelAnimationFrame(rafRef.current)
         rafRef.current = null
         startAtRef.current = null
+        baseElapsedRef.current = 0
         setElapsed(0)
         setRunning(false)
         setActivityName("")
@@ -77,15 +79,19 @@ export function CreateLog({ handleCreate, handleUpdate, isCreating, isUpdating, 
     }, [])
 
     useEffect(() => {
-        if (runningLog?.startedAt) {
-            baseElapsedRef.current = new Date().getTime() - new Date(runningLog.startedAt).getTime()
+        if (runningLog && !isInitialized.current) {
+            if (runningLog?.startedAt) {
+                baseElapsedRef.current = new Date().getTime() - new Date(runningLog.startedAt).getTime()
+            }
+            if (runningLog?.category) {
+                setActivityName(runningLog.category)
+            }
+            if (runningLog?.status === "Running") {
+                start()
+            }
+            isInitialized.current = true
         }
-        if (runningLog?.category) {
-            setActivityName(runningLog.category)
-        }
-        if (runningLog?.status === "Running") {
-            start()
-        }
+
     }, [runningLog])
 
     const handleCreateLog = () => {
