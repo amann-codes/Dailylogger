@@ -72,7 +72,14 @@ export function LogsDisplay() {
                             <Calendar
                                 mode="single"
                                 selected={date}
-                                onSelect={(newDate) => setDate(newDate || new Date())}
+                                onSelect={(newDate) => {
+                                    if (newDate) {
+                                        const adjustedDate = new Date(newDate.setHours(0, 0, 0, 0));
+                                        setDate(adjustedDate);
+                                    } else {
+                                        setDate(new Date());
+                                    }
+                                }}
                                 className="rounded-md border-none"
                             />
                         </DropdownMenuContent>
