@@ -26,31 +26,33 @@ export function LogsDisplay() {
     })
 
     return (
-        <Card className="max-w-2xl w-full sm:rounded-xl rounded-none">
-            <CardHeader className="flex sm:flex-row flex-col justify-between gap-3 ">
-                <span >Your Daily Activities</span>
+        <Card className="max-w-2xl w-full sm:rounded-xl rounded-none  sm:py-6 py-3">
+            <CardHeader className="flex sm:flex-row flex-col justify-between items-center gap-3">
+                <span className="text-xl">Your Daily Activities</span>
                 <div className="flex items-center gap-4">
-                    <Card className="p-0">
+                    {getLogsQuery.data?.length !== 0 && <Card className="p-0">
                         <CardContent className="flex flex-row items-center justify-start p-1 h-9 ">
                             <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => setViewMode("card")}
+                                className={`${viewMode == "card" ? "bg-gray-200" : ""}`}
                             >
                                 <List className="h-4 w-4" />
                             </Button>
 
-                            <Separator orientation="vertical" className="p-0 m-0" />
+                            <Separator orientation="vertical" className="p-0 mx-1" />
 
                             <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => setViewMode("table")}
+                                className={`${viewMode == "table" ? "bg-gray-200" : ""}`}
                             >
                                 <TableIcon className="h-4 w-4" />
                             </Button>
                         </CardContent>
-                    </Card>
+                    </Card>}
                     <Button
                         disabled={getLogsQuery.data?.length == 0}
                         className="p-2 rounded-md border border-muted-foreground/20 bg-background hover:bg-muted/50 transition-colors shadow-sm"
@@ -99,55 +101,80 @@ export function LogsDisplay() {
                     (viewMode == "card" ?
                         <div className="w-full flex flex-col gap-2 h-96 overflow-y-auto">
                             {getLogsQuery.data.map((log, index) => (
-                                <Card key={index} className="w-full hover:bg-muted/30 transition-colors">
+                                <Card
+                                    key={index}
+                                    className="w-full hover:bg-muted/30 transition-colors"
+                                >
                                     <CardHeader>
-                                        <div className="flex items-center justify-between">
+                                        <div className="hidden sm:flex flex-col gap-5">
+                                            <div className="flex items-center justify-between">
+                                                <Badge variant="secondary" className="capitalize text-base">
+                                                    {log.category}
+                                                </Badge>
+                                                {log.finishedAt && (
+                                                    <span className="font-mono text-sm text-muted-foreground">
+                                                        {duration(log.startedAt, log.finishedAt) ?? "N/A"}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <span className="text-sm text-muted-foreground ml-2">
+                                                {log.startedAt.toLocaleString()}
+                                            </span>
+                                        </div>
+
+                                        <div className="flex flex-col gap-2 sm:hidden">
                                             <Badge variant="secondary" className="capitalize text-base">
                                                 {log.category}
                                             </Badge>
-                                            <div className="flex gap-3 font-mono text-sm text-muted-foreground">
-                                                <span className="hidden" >{log.startedAt.toLocaleString()},</span>
-                                                {
-                                                    log.finishedAt &&
-                                                    <span>
+                                            <div className="flex items-center justify-between text-sm text-muted-foreground">
+                                                <span className="ml-2">{log.startedAt.toLocaleString()}</span>
+                                                {log.finishedAt && (
+                                                    <span className="font-mono">
                                                         {duration(log.startedAt, log.finishedAt) ?? "N/A"}
                                                     </span>
-                                                }
+                                                )}
                                             </div>
                                         </div>
-                                        <span className="sm:hidden" >{log.startedAt.toLocaleString()},</span>
                                     </CardHeader>
                                 </Card>
+
                             ))}
                         </div>
                         :
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Activity</TableHead>
-                                    <TableHead>Date</TableHead>
-                                    <TableHead>Duration</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {
-                                    getLogsQuery.data.map((log, index) => {
-                                        return <TableRow key={index}>
+                        <div className="overflow-y-auto h-96 w-full rounded-md border p-1">
+                            <Table className="w-full">
+                                <TableHeader className="sticky top-0 bg-background z-10">
+                                    <TableRow>
+                                        <TableHead>Activity</TableHead>
+                                        <TableHead>Started at</TableHead>
+                                        <TableHead>Duration</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {getLogsQuery.data.map((log, index) => (
+                                        <TableRow key={index}>
                                             <TableCell>
-                                                <Badge variant="secondary" className="capitalize text-sm">
+                                                <Badge
+                                                    variant="secondary"
+                                                    className="capitalize text-sm"
+                                                >
                                                     {log.category}
                                                 </Badge>
                                             </TableCell>
-                                            <TableCell>{log.startedAt.toLocaleDateString()}</TableCell>
-                                            {
-                                                log.finishedAt && <TableCell>{
-                                                    duration(log.startedAt, log.finishedAt)
-                                                }</TableCell>}
+                                            <TableCell>
+                                                {log.startedAt.toLocaleTimeString()}
+                                            </TableCell>
+                                            {log.finishedAt && (
+                                                <TableCell>
+                                                    {duration(log.startedAt, log.finishedAt)}
+                                                </TableCell>
+                                            )}
                                         </TableRow>
-                                    })
-                                }
-                            </TableBody>
-                        </Table>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+
                     )
                 }
             </CardContent>

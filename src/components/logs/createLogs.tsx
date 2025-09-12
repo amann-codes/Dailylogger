@@ -112,8 +112,8 @@ export function CreateLog({ handleCreate, handleUpdate, isCreating, isUpdating, 
     const { h, m, s } = toHMS(elapsed)
 
     return (
-        <Card className="max-w-2xl w-full sm:rounded-xl rounded-none">
-            <CardContent className="sm:pt-6">
+        <Card className="max-w-2xl w-full sm:rounded-xl rounded-none  sm:py-6 py-3">
+            <CardContent>
                 <div className="flex flex-col sm:flex-row items-center gap-3">
                     <div
                         tabIndex={0}
