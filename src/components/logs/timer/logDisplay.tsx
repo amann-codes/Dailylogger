@@ -1,67 +1,142 @@
 "use client"
 
 import { useState } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { getFinishedLogs } from "@/lib/actions/getFinishedLogs"
+import { updateLog } from "@/lib/actions/updateLog"
+import { deleteLog } from "@/lib/actions/deleteLog"
 import { Log, Sort } from "@/lib/types"
 import { duration } from "@/lib/utils"
-import { ArrowUpDown, CalendarFold, List, Loader2, TableIcon } from "lucide-react"
+import { ArrowUpDown, CalendarFold, List, Loader2, Pencil, TableIcon, Trash2 } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
-import { DropdownMenu, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { DropdownMenuContent } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent } from "@/components/ui/dropdown-menu"
 import { Calendar } from "@/components/ui/calendar"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 export function LogsDisplay() {
     const [sort, setSort] = useState<Sort>(Sort.desc);
     const [date, setDate] = useState<Date>(new Date(new Date().setHours(0, 0, 0, 0)));
     const [viewMode, setViewMode] = useState<"table" | "card">("table");
+    const [logToEdit, setLogToEdit] = useState<Log | null>(null);
+    const [logToDelete, setLogToDelete] = useState<Log | null>(null);
+
+    const queryClient = useQueryClient();
 
     const getLogsQuery = useQuery<Log[], Error>({
         queryKey: ["logs", sort, date],
         queryFn: () => getFinishedLogs(sort, date),
-    })
+    });
+
+    const updateLogMutation = useMutation({
+        mutationFn: async (updatedData: Log) => updateLog(updatedData),
+        onSuccess: () => {
+            toast.success("Log updated successfully!");
+            queryClient.invalidateQueries({ queryKey: ["logs", sort, date] });
+            setLogToEdit(null);
+        },
+        onError: (error) => {
+            toast.error(`Failed to update log: ${error.message}`);
+        },
+    });
+
+    const deleteLogMutation = useMutation({
+        mutationFn: async (logId: string) => deleteLog(logId),
+        onSuccess: () => {
+            toast.success("Log deleted successfully!");
+            queryClient.invalidateQueries({ queryKey: ["logs", sort, date] });
+            setLogToDelete(null);
+        },
+        onError: (error) => {
+            toast.error(`Failed to delete log: ${error.message}`);
+        },
+    });
+
+const handleUpdateSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!logToEdit) return;
+
+    const formData = new FormData(event.currentTarget);
+    const category = formData.get("category") as string;
+    const startTimeString = formData.get("startedAt") as string;
+    const finishTimeString = formData.get("finishedAt") as string;
+
+    const newStartedAt = new Date(logToEdit.startedAt);
+    if (startTimeString) {
+        const [hours, minutes] = startTimeString.split(':').map(Number);
+        newStartedAt.setHours(hours, minutes, 0, 0);
+    }
+
+    let newFinishedAt: Date | null = null;
+    if (finishTimeString) {
+        const baseDate = logToEdit.finishedAt ? new Date(logToEdit.finishedAt) : new Date(logToEdit.startedAt);
+        const [hours, minutes] = finishTimeString.split(':').map(Number);
+        baseDate.setHours(hours, minutes, 0, 0);
+        newFinishedAt = baseDate;
+    }
+
+    if (newFinishedAt && newStartedAt.getTime() > newFinishedAt.getTime()) {
+        newStartedAt.setDate(newStartedAt.getDate() - 1);
+    }
+    
+    const updatedData = {
+        id: logToEdit.id,
+        category: category,
+        startedAt: newStartedAt,
+        finishedAt: newFinishedAt,
+    };
+
+    updateLogMutation.mutate(updatedData);
+};
+
+    const handleDeleteConfirm = () => {
+        if (!logToDelete?.id) return;
+        deleteLogMutation.mutate(logToDelete.id);
+    };
 
     return (
-        <Card className="max-w-2xl w-full sm:rounded-xl rounded-none  sm:py-6 py-3">
+        <Card className="max-w-2xl w-full sm:rounded-xl rounded-none sm:py-6 py-3">
             <CardHeader className="flex sm:flex-row flex-col justify-between items-center gap-3">
                 <span className="text-xl">Your Daily Activities</span>
                 <div className="flex items-center gap-4">
-                    {getLogsQuery.data?.length !== 0 && <Card className="p-0">
-                        <CardContent className="flex flex-row items-center justify-start p-1 h-9 ">
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setViewMode("card")}
-                                className={`${viewMode == "card" ? "bg-gray-200" : ""}`}
-                            >
-                                <List className="h-4 w-4" />
-                            </Button>
-
-                            <Separator orientation="vertical" className="p-0 mx-1" />
-
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setViewMode("table")}
-                                className={`${viewMode == "table" ? "bg-gray-200" : ""}`}
-                            >
-                                <TableIcon className="h-4 w-4" />
-                            </Button>
-                        </CardContent>
-                    </Card>}
+                    {getLogsQuery.data?.length !== 0 && (
+                        <Card className="p-0">
+                            <CardContent className="flex flex-row items-center justify-start p-1 h-9 ">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setViewMode("card")}
+                                    className={`${viewMode === "card" ? "bg-accent" : ""}`}
+                                >
+                                    <List className="h-4 w-4" />
+                                </Button>
+                                <Separator orientation="vertical" className="p-0 mx-1" />
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setViewMode("table")}
+                                    className={`${viewMode === "table" ? "bg-accent" : ""}`}
+                                >
+                                    <TableIcon className="h-4 w-4" />
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    )}
                     <Button
-                        disabled={getLogsQuery.data?.length == 0}
+                        disabled={!getLogsQuery.data || getLogsQuery.data.length === 0}
                         className="p-2 rounded-md border border-muted-foreground/20 bg-background hover:bg-muted/50 transition-colors shadow-sm"
                         onClick={() => setSort((val) => (val === Sort.desc ? Sort.asc : Sort.desc))}
                         aria-label={`Sort logs ${sort === Sort.desc ? "ascending" : "descending"}`}
                     >
                         <ArrowUpDown className="size-5 text-muted-foreground hover:text-primary" />
                     </Button>
-                    <DropdownMenu >
+                    <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button
                                 className="flex items-center gap-2 p-2 rounded-md border border-muted-foreground/20 bg-background hover:bg-muted/50 transition-colors shadow-sm text-sm font-medium text-muted-foreground hover:text-primary"
@@ -71,14 +146,13 @@ export function LogsDisplay() {
                                 <span>{date.toDateString()}</span>
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="center" className="w-full p-2 bg-background border rounded-md shadow-lg">
+                        <DropdownMenuContent align="end" className="w-full p-2 bg-background border rounded-md shadow-lg">
                             <Calendar
                                 mode="single"
                                 selected={date}
                                 onSelect={(newDate) => {
                                     if (newDate) {
-                                        const adjustedDate = new Date(newDate.setHours(0, 0, 0, 0));
-                                        setDate(adjustedDate);
+                                        setDate(new Date(newDate.setHours(0, 0, 0, 0)));
                                     } else {
                                         setDate(new Date());
                                     }
@@ -90,94 +164,139 @@ export function LogsDisplay() {
                 </div>
             </CardHeader>
             <Separator />
-            <CardContent >
+            <CardContent>
                 {getLogsQuery.isLoading ? (
-                    <Loader2 className="animate-spin w-full my-9" />
+                    <div className="flex justify-center items-center py-9">
+                        <Loader2 className="animate-spin" />
+                    </div>
                 ) : getLogsQuery.isError ? (
-                    <p className="text-center">{`Error getting logs :${getLogsQuery.error}`}</p>
+                    <p className="text-center py-9 text-destructive">{`Error: ${getLogsQuery.error.message}`}</p>
                 ) : !getLogsQuery.data || getLogsQuery.data.length === 0 ? (
-                    <p className="text-center">No activities, start the timer and log your activites</p>
-                ) :
-                    (viewMode == "card" ?
-                        <div className="w-full flex flex-col gap-2 h-96 overflow-y-auto">
-                            {getLogsQuery.data.map((log, index) => (
-                                <Card
-                                    key={index}
-                                    className="w-full hover:bg-muted/30 transition-colors"
-                                >
-                                    <CardHeader>
-                                        <div className="hidden sm:flex flex-col gap-5">
-                                            <div className="flex items-center justify-between">
-                                                <Badge variant="secondary" className="capitalize text-base">
-                                                    {log.category}
-                                                </Badge>
-                                                {log.finishedAt && (
-                                                    <span className="font-mono text-sm text-muted-foreground">
-                                                        {duration(log.startedAt, log.finishedAt) ?? "N/A"}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <span className="text-sm text-muted-foreground ml-2">
-                                                {log.startedAt.toLocaleString()}
-                                            </span>
+                    <p className="text-center py-9 text-muted-foreground">No activities found for this date.</p>
+                ) : viewMode === "card" ? (
+                    <div className="w-full flex flex-col gap-3 h-96 overflow-y-auto">
+                        {getLogsQuery.data.map((log) => (
+                            <Card key={log.id} className="w-full transition-colors">
+                                <CardHeader>
+                                    <div className="hidden sm:flex flex-col gap-4">
+                                        <div className="flex items-center justify-between">
+                                            <Badge variant="secondary" className="capitalize text-base">{log.category}</Badge>
+                                            {log.finishedAt && <span className="font-mono text-sm text-muted-foreground">{duration(log.startedAt, log.finishedAt)}</span>}
                                         </div>
-
-                                        <div className="flex flex-col gap-2 sm:hidden">
-                                            <Badge variant="secondary" className="capitalize text-base">
-                                                {log.category}
-                                            </Badge>
-                                            <div className="flex items-center justify-between text-sm text-muted-foreground">
-                                                <span className="ml-2">{log.startedAt.toLocaleString()}</span>
-                                                {log.finishedAt && (
-                                                    <span className="font-mono">
-                                                        {duration(log.startedAt, log.finishedAt) ?? "N/A"}
-                                                    </span>
-                                                )}
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm text-muted-foreground">{log.startedAt.toLocaleString()}</span>
+                                            <div className="flex items-center gap-1">
+                                                <Button variant="ghost" size="icon" className="h-7 w-7 bg-gray-200 rounded-full" onClick={() => setLogToEdit(log)}><Pencil className="h-4 w-4" /></Button>
+                                                <Button variant="ghost" size="icon" className="h-7 w-7 bg-gray-200 rounded-full" onClick={() => setLogToDelete(log)}><Trash2 className="h-4 w-4" /></Button>
                                             </div>
                                         </div>
-                                    </CardHeader>
-                                </Card>
-
-                            ))}
-                        </div>
-                        :
-                        <div className="overflow-y-auto h-96 w-full rounded-md border p-1">
-                            <Table className="w-full">
-                                <TableHeader className="sticky top-0 bg-background z-10">
-                                    <TableRow>
-                                        <TableHead>Activity</TableHead>
-                                        <TableHead>Started at</TableHead>
-                                        <TableHead>Duration</TableHead>
+                                    </div>
+                                    <div className="flex flex-col gap-3 sm:hidden">
+                                        <div className="flex justify-between">
+                                            <Badge variant="secondary" className="capitalize text-base w-fit">{log.category}</Badge>
+                                            <div className="flex items-center gap-1 self-end">
+                                                <Button variant="ghost" size="icon" className="h-7 w-7 bg-gray-200 rounded-full" onClick={() => setLogToEdit(log)}><Pencil className="h-4 w-4" /></Button>
+                                                <Button variant="ghost" size="icon" className="h-7 w-7 bg-gray-200 rounded-full" onClick={() => setLogToDelete(log)}><Trash2 className="h-4 w-4" /></Button>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center justify-between text-sm text-muted-foreground">
+                                            <span>{log.startedAt.toLocaleString()}</span>
+                                            {log.finishedAt && <span className="font-mono">{duration(log.startedAt, log.finishedAt)}</span>}
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                            </Card>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="overflow-y-auto h-96 w-full rounded-md border">
+                        <Table className="w-full">
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Activity</TableHead>
+                                    <TableHead>Started at</TableHead>
+                                    <TableHead>Duration</TableHead>
+                                    <TableHead>Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {getLogsQuery.data.map((log) => (
+                                    <TableRow key={log.id}>
+                                        <TableCell><Badge variant="secondary" className="capitalize text-sm">{log.category}</Badge></TableCell>
+                                        <TableCell>{log.startedAt.toLocaleTimeString()}</TableCell>
+                                        <TableCell>{log.finishedAt ? duration(log.startedAt, log.finishedAt) : "N/A"}</TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center gap-1">
+                                                <Button variant="ghost" size="icon" className="h-7 w-7 bg-gray-200 rounded-full" onClick={() => setLogToEdit(log)}><Pencil className="h-4 w-4" /></Button>
+                                                <Button variant="ghost" size="icon" className="h-7 w-7 bg-gray-200 rounded-full" onClick={() => setLogToDelete(log)}><Trash2 className="h-4 w-4" /></Button>
+                                            </div>
+                                        </TableCell>
                                     </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {getLogsQuery.data.map((log, index) => (
-                                        <TableRow key={index}>
-                                            <TableCell>
-                                                <Badge
-                                                    variant="secondary"
-                                                    className="capitalize text-sm"
-                                                >
-                                                    {log.category}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell>
-                                                {log.startedAt.toLocaleTimeString()}
-                                            </TableCell>
-                                            {log.finishedAt && (
-                                                <TableCell>
-                                                    {duration(log.startedAt, log.finishedAt)}
-                                                </TableCell>
-                                            )}
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
-
-                    )
-                }
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                )}
             </CardContent>
+
+            <Dialog open={!!logToEdit} onOpenChange={() => setLogToEdit(null)}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Edit Activity</DialogTitle>
+                        <DialogDescription>You can only edit the time. The date will be preserved.</DialogDescription>
+                    </DialogHeader>
+                    {logToEdit && (
+                        <form onSubmit={handleUpdateSubmit} className="grid gap-4 py-4">
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="category" className="text-right">Activity</Label>
+                                <Input id="category" name="category" defaultValue={logToEdit.category} className="col-span-3" />
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="startedAt" className="text-right">Started At</Label>
+                                <Input
+                                    id="startedAt"
+                                    name="startedAt"
+                                    type="time"
+                                    defaultValue={logToEdit.startedAt.toTimeString().slice(0, 5)}
+                                    className="col-span-3"
+                                />
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="finishedAt" className="text-right">Finished At</Label>
+                                <Input
+                                    id="finishedAt"
+                                    name="finishedAt"
+                                    type="time"
+                                    defaultValue={logToEdit.finishedAt ? logToEdit.finishedAt.toTimeString().slice(0, 5) : ''}
+                                    className="col-span-3"
+                                />
+                            </div>
+                            <DialogFooter>
+                                <Button type="submit" disabled={updateLogMutation.isPending}>
+                                    {updateLogMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Save Changes"}
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={!!logToDelete} onOpenChange={() => setLogToDelete(null)}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Are you absolutely sure?</DialogTitle>
+                        <DialogDescription>
+                            This will permanently delete the log for: <span className="font-semibold">{logToDelete?.category}</span>.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+                        <Button variant="destructive" onClick={handleDeleteConfirm} disabled={deleteLogMutation.isPending}>
+                            {deleteLogMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Delete"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </Card>
-    )
+    );
 }

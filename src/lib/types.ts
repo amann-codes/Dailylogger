@@ -1,4 +1,5 @@
 export type Log = {
+    id?: string;
     category: string;
     startedAt: Date;
     finishedAt: Date | null;
