@@ -10,22 +10,24 @@ export const udpateLogStatus = async () => {
     }
     const log = await prisma.log.findFirst({
         where: {
-            status: "Running"
-        },
+            AND: [
+                { userId: user.id },
+                { status: "Running" }
+            ]
+        }
     })
     if (!log) {
-        return;
+        throw new Error("No log found running to udpate")
     }
     const update = await prisma.log.update({
         where: {
             id: log.id
         },
         data: {
-            finishedAt:new Date(),
+            finishedAt: new Date(),
             status: "Stopped"
         }
     })
-    console.log("log updated", update)
     if (!update) {
         throw new Error(`Activity was not udpated :${update}`)
     }
