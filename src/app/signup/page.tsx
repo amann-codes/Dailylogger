@@ -2,8 +2,8 @@ import SignupPage from "@/components/auth/signup";
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-    title: "Sign in | Dailylogger",
-    description: "Sign in to log your activities"
+    title: "Sign up | Dailylogger",
+    description: "Sign up to craete your account"
 }
 
 export default function Page() {
