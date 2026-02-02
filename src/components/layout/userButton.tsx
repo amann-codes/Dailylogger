@@ -4,7 +4,8 @@ import { useSession, signOut } from "next-auth/react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { getInitials } from "@/lib/utils";
-import { LogOutIcon } from "lucide-react";
+import { History, LogOutIcon } from "lucide-react";
+import Link from "next/link";
 
 export function UserButton() {
     const { data: session } = useSession();
@@ -28,6 +29,9 @@ export function UserButton() {
             <DropdownMenuContent align="end">
                 <DropdownMenuItem>{name}</DropdownMenuItem>
                 <DropdownMenuItem>{email}</DropdownMenuItem>
+                <Link href={'/history'}>
+                    <DropdownMenuItem><History />History</DropdownMenuItem>
+                </Link>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => signOut()}>
                     Sign out <LogOutIcon />
