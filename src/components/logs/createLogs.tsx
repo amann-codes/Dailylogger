@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { toast } from "sonner"
 import { Log } from "@/lib/types"
+import { ChevronDown, ChevronUp } from "lucide-react"
 
 function pad(n: number) {
     return n.toString().padStart(2, "0")
@@ -20,7 +21,7 @@ function toHMS(ms: number) {
 }
 
 type LogProps = {
-    handleCreate: (category: string, startedAt: Date) => void
+    handleCreate: (category: string, startedAt: Date, description?: string) => void
     handleUpdate: () => void
     isCreating: boolean
     isUpdating: boolean
@@ -32,6 +33,8 @@ export function CreateLog({ handleCreate, handleUpdate, isCreating, isUpdating, 
     const [elapsed, setElapsed] = useState(0)
     const [running, setRunning] = useState(false)
     const [activityName, setActivityName] = useState("")
+    const [description, setDescription] = useState("")
+    const [showDescription, setShowDescription] = useState(false)
     const baseElapsedRef = useRef(0)
     const startAtRef = useRef<number | null>(null)
     const rafRef = useRef<number | null>(null)
@@ -70,6 +73,8 @@ export function CreateLog({ handleCreate, handleUpdate, isCreating, isUpdating, 
         setElapsed(0)
         setRunning(false)
         setActivityName("")
+        setDescription("")
+        setShowDescription(false)
     }
 
     useEffect(() => {
@@ -100,7 +105,7 @@ export function CreateLog({ handleCreate, handleUpdate, isCreating, isUpdating, 
             return
         }
         start()
-        handleCreate(activityName.trim(), new Date())
+        handleCreate(activityName.trim(), new Date(), description.trim() || undefined)
     }
 
     const handleUpdateLog = () => {
@@ -136,8 +141,8 @@ export function CreateLog({ handleCreate, handleUpdate, isCreating, isUpdating, 
                         </div>
                         <span className="sr-only">{running ? "Running" : "Stopped"}</span>
                     </div>
-                    <div className="flex flex-col items-center">
-                        <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <div className="flex flex-col items-center flex-1">
+                        <div className="flex items-center gap-3 w-full">
                             <Input
                                 placeholder="Activity name"
                                 value={activityName}
@@ -154,6 +159,29 @@ export function CreateLog({ handleCreate, handleUpdate, isCreating, isUpdating, 
                                 {running ? "Finish" : "Start"}
                             </Button>
                         </div>
+                        {!running && (
+                            <div className="w-full mt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowDescription(!showDescription)}
+                                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                    disabled={isCreating || isUpdating || isFetchingRunningLog}
+                                >
+                                    {showDescription ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                                    {showDescription ? "Hide description" : "Add description (optional)"}
+                                </button>
+                                {showDescription && (
+                                    <textarea
+                                        placeholder="Add a description, notes, or URL..."
+                                        value={description}
+                                        onChange={(e) => setDescription(e.target.value)}
+                                        className="mt-2 w-full min-h-[60px] px-3 py-2 text-sm border rounded-md bg-background resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                                        disabled={isCreating || isUpdating || isFetchingRunningLog}
+                                        aria-label="Activity description"
+                                    />
+                                )}
+                            </div>
+                        )}
                         <p className="text-center text-xs text-muted-foreground mt-4">
                             Click on {running ? "stop" : "start"} button to {running ? "stop" : "start"} timer.
                         </p>

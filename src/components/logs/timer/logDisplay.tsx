@@ -10,7 +10,7 @@ import { updateLog } from "@/lib/actions/updateLog"
 import { deleteLog } from "@/lib/actions/deleteLog"
 import { Log, Sort } from "@/lib/types"
 import { duration } from "@/lib/utils"
-import { ArrowUpDown, CalendarFold, List, Loader2, Pencil, TableIcon, Trash2 } from "lucide-react"
+import { ArrowUpDown, CalendarFold, ExternalLink, List, Loader2, Pencil, TableIcon, Trash2 } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent } from "@/components/ui/dropdown-menu"
 import { Calendar } from "@/components/ui/calendar"
@@ -39,6 +39,7 @@ export function LogsDisplay() {
         onSuccess: () => {
             toast.success("Log updated successfully!");
             queryClient.invalidateQueries({ queryKey: ["logs", sort, date] });
+            queryClient.invalidateQueries({ queryKey: ["recent-logs"] });
             setLogToEdit(null);
         },
         onError: (error) => {
@@ -51,6 +52,7 @@ export function LogsDisplay() {
         onSuccess: () => {
             toast.success("Log deleted successfully!");
             queryClient.invalidateQueries({ queryKey: ["logs", sort, date] });
+            queryClient.invalidateQueries({ queryKey: ["recent-logs"] });
             setLogToDelete(null);
         },
         onError: (error) => {
@@ -64,6 +66,7 @@ const handleUpdateSubmit = (event: React.FormEvent<HTMLFormElement>) => {
 
     const formData = new FormData(event.currentTarget);
     const category = formData.get("category") as string;
+    const description = formData.get("description") as string;
     const startTimeString = formData.get("startedAt") as string;
     const finishTimeString = formData.get("finishedAt") as string;
 
@@ -88,11 +91,65 @@ const handleUpdateSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     const updatedData = {
         id: logToEdit.id,
         category: category,
+        description: description || null,
         startedAt: newStartedAt,
         finishedAt: newFinishedAt,
     };
 
     updateLogMutation.mutate(updatedData);
+};
+
+// Helper to extract URLs from text
+const extractUrls = (text: string): string[] => {
+    const urlRegex = /(https?:\/\/[^\s]+)/gi;
+    return text.match(urlRegex) || [];
+};
+
+// Helper to get domain from URL
+const getDomain = (url: string): string => {
+    try {
+        const domain = new URL(url).hostname.replace('www.', '');
+        return domain.length > 20 ? domain.substring(0, 20) + '...' : domain;
+    } catch {
+        return url.length > 20 ? url.substring(0, 20) + '...' : url;
+    }
+};
+
+// Component to render description with URLs
+const DescriptionDisplay = ({ description }: { description: string }) => {
+    const urls = extractUrls(description);
+    
+    if (urls.length === 0) {
+        return <p className="text-xs text-muted-foreground line-clamp-2">{description}</p>;
+    }
+
+    const textWithoutUrls = description.replace(/(https?:\/\/[^\s]+)/gi, '').trim();
+
+    return (
+        <div className="space-y-1">
+            {textWithoutUrls && (
+                <p className="text-xs text-muted-foreground line-clamp-1">{textWithoutUrls}</p>
+            )}
+            <div className="flex flex-wrap gap-1">
+                {urls.slice(0, 2).map((url, i) => (
+                    <a
+                        key={i}
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] bg-muted hover:bg-muted/80 rounded transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <ExternalLink className="h-2.5 w-2.5" />
+                        {getDomain(url)}
+                    </a>
+                ))}
+                {urls.length > 2 && (
+                    <span className="text-[10px] text-muted-foreground">+{urls.length - 2} more</span>
+                )}
+            </div>
+        </div>
+    );
 };
 
     const handleDeleteConfirm = () => {
@@ -178,11 +235,14 @@ const handleUpdateSubmit = (event: React.FormEvent<HTMLFormElement>) => {
                         {getLogsQuery.data.map((log) => (
                             <Card key={log.id} className="w-full transition-colors">
                                 <CardHeader>
-                                    <div className="hidden sm:flex flex-col gap-4">
+                                    <div className="hidden sm:flex flex-col gap-3">
                                         <div className="flex items-center justify-between">
                                             <Badge variant="secondary" className="capitalize text-base">{log.category}</Badge>
                                             {log.finishedAt && <span className="font-mono text-sm text-muted-foreground">{duration(log.startedAt, log.finishedAt)}</span>}
                                         </div>
+                                        {log.description && (
+                                            <DescriptionDisplay description={log.description} />
+                                        )}
                                         <div className="flex items-center justify-between">
                                             <span className="text-sm text-muted-foreground">{log.startedAt.toLocaleString()}</span>
                                             <div className="flex items-center gap-1">
@@ -199,6 +259,9 @@ const handleUpdateSubmit = (event: React.FormEvent<HTMLFormElement>) => {
                                                 <Button variant="ghost" size="icon" className="h-7 w-7 bg-gray-200 rounded-full" onClick={() => setLogToDelete(log)}><Trash2 className="h-4 w-4" /></Button>
                                             </div>
                                         </div>
+                                        {log.description && (
+                                            <DescriptionDisplay description={log.description} />
+                                        )}
                                         <div className="flex items-center justify-between text-sm text-muted-foreground">
                                             <span>{log.startedAt.toLocaleString()}</span>
                                             {log.finishedAt && <span className="font-mono">{duration(log.startedAt, log.finishedAt)}</span>}
@@ -214,6 +277,7 @@ const handleUpdateSubmit = (event: React.FormEvent<HTMLFormElement>) => {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Activity</TableHead>
+                                    <TableHead className="hidden sm:table-cell">Description</TableHead>
                                     <TableHead>Started at</TableHead>
                                     <TableHead>Duration</TableHead>
                                     <TableHead>Actions</TableHead>
@@ -223,6 +287,13 @@ const handleUpdateSubmit = (event: React.FormEvent<HTMLFormElement>) => {
                                 {getLogsQuery.data.map((log) => (
                                     <TableRow key={log.id}>
                                         <TableCell><Badge variant="secondary" className="capitalize text-sm">{log.category}</Badge></TableCell>
+                                        <TableCell className="hidden sm:table-cell max-w-[200px]">
+                                            {log.description ? (
+                                                <DescriptionDisplay description={log.description} />
+                                            ) : (
+                                                <span className="text-xs text-muted-foreground/50">-</span>
+                                            )}
+                                        </TableCell>
                                         <TableCell>{log.startedAt.toLocaleTimeString()}</TableCell>
                                         <TableCell>{log.finishedAt ? duration(log.startedAt, log.finishedAt) : "N/A"}</TableCell>
                                         <TableCell>
@@ -243,13 +314,23 @@ const handleUpdateSubmit = (event: React.FormEvent<HTMLFormElement>) => {
                 <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle>Edit Activity</DialogTitle>
-                        <DialogDescription>You can only edit the time. The date will be preserved.</DialogDescription>
+                        <DialogDescription>Edit activity details. The date will be preserved.</DialogDescription>
                     </DialogHeader>
                     {logToEdit && (
                         <form onSubmit={handleUpdateSubmit} className="grid gap-4 py-4">
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="category" className="text-right">Activity</Label>
                                 <Input id="category" name="category" defaultValue={logToEdit.category} className="col-span-3" />
+                            </div>
+                            <div className="grid grid-cols-4 items-start gap-4">
+                                <Label htmlFor="description" className="text-right pt-2">Description</Label>
+                                <textarea
+                                    id="description"
+                                    name="description"
+                                    defaultValue={logToEdit.description || ''}
+                                    placeholder="Add description, notes, or URL..."
+                                    className="col-span-3 min-h-[80px] px-3 py-2 text-sm border rounded-md bg-background resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                                />
                             </div>
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="startedAt" className="text-right">Started At</Label>

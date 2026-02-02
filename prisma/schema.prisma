@@ -27,13 +27,14 @@ model User {
 }
 
 model Log {
-  id         String    @id @default(auto()) @map("_id") @db.ObjectId
-  category   String
-  startedAt  DateTime
-  finishedAt DateTime?
-  status     status
-  userId     String    @map("user_id") @db.ObjectId
-  user       User      @relation(references: [id], fields: [userId])
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  category    String
+  description String?
+  startedAt   DateTime
+  finishedAt  DateTime?
+  status      status
+  userId      String    @map("user_id") @db.ObjectId
+  user        User      @relation(references: [id], fields: [userId])
 }
 
 model category {

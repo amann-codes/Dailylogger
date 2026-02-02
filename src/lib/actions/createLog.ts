@@ -14,6 +14,7 @@ export async function createLog(data: Log) {
         const log = await prisma.log.create({
             data: {
                 category: data.category,
+                description: data.description || null,
                 startedAt: new Date,
                 status: "Running",
                 userId

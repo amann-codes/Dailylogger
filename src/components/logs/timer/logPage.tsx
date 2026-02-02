@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { CreateLog } from "@/components/logs/createLogs"
 import { LogsDisplay } from "@/components/logs/timer/logDisplay"
+import { RecentActivities } from "@/components/logs/recentActivities"
 import { createLog } from "@/lib/actions/createLog"
 import getRunningLog from "@/lib/actions/getRunningLog"
 import { udpateLogStatus } from "@/lib/actions/updateLogStatus"
@@ -32,6 +33,7 @@ export default function ActivityPage() {
         onSuccess: () => {
             toast.success("Activity recorded successfully")
             queryClient.invalidateQueries({ queryKey: ["logs"] })
+            queryClient.invalidateQueries({ queryKey: ["recent-logs"] })
         },
         onError: (error) => {
             toast.error(`Failed to update log: ${error.message}`)
@@ -42,7 +44,7 @@ export default function ActivityPage() {
         <div className="flex flex-col min-h-screen w-full sm:items-center sm:justify-center sm:space-y-4">
             <Header />
             <CreateLog
-                handleCreate={(category, startedAt) => createLogMutation({ finishedAt: null, category, startedAt })}
+                handleCreate={(category, startedAt, description) => createLogMutation({ finishedAt: null, category, startedAt, description })}
                 handleUpdate={updateLogMutation}
                 isCreating={isCreating}
                 isUpdating={isUpdating}
@@ -50,6 +52,7 @@ export default function ActivityPage() {
                 runningLog={getRunningLogQuery.data || null}
             />
             <LogsDisplay />
+            <RecentActivities />
         </div>
     )
 }

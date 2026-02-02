@@ -21,6 +21,7 @@ export async function updateLog(data: Log) {
         where: { id: data.id },
         data: {
             category: data.category,
+            description: data.description,
             startedAt: data.startedAt,
             finishedAt: data.finishedAt,
         }
