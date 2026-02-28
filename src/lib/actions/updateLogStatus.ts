@@ -2,34 +2,45 @@
 
 import { getSession } from "./getSession"
 import prisma from "../db"
+import { calculateDuration } from "@/lib/domain"
 
 export const udpateLogStatus = async () => {
     const { user } = await getSession();
     if (!user) {
-        throw new Error(`User must be logged in to update logs ${user}`);
+        throw new Error("User must be logged in to update logs");
     }
+
+    // Find running log (finishedAt === null)
     const log = await prisma.log.findFirst({
         where: {
-            AND: [
-                { userId: user.id },
-                { status: "Running" }
-            ]
+            userId: user.id,
+            finishedAt: null
         }
     })
+
     if (!log) {
-        throw new Error("No log found running to udpate")
+        throw new Error("No running activity found to stop")
     }
-    const update = await prisma.log.update({
+
+    const finishedAt = new Date()
+    const duration = calculateDuration(log.startedAt, finishedAt)
+
+    const updatedLog = await prisma.log.update({
         where: {
             id: log.id
         },
         data: {
-            finishedAt: new Date(),
-            status: "Stopped"
+            finishedAt,
+            duration
+        },
+        include: {
+            tags: true
         }
     })
-    if (!update) {
-        throw new Error(`Activity was not udpated :${update}`)
+
+    if (!updatedLog) {
+        throw new Error("Failed to stop activity")
     }
-    return log;
+
+    return updatedLog
 }

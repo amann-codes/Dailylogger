@@ -2,17 +2,18 @@
 
 import { getSession } from "@/lib/actions/getSession"
 import prisma from "@/lib/db"
-import { Log, Sort } from "../types"
+import { LogWithTags, Sort } from "../types"
 
 type GetAllLogsParams = {
     sort?: Sort
     page?: number
     limit?: number
     search?: string
+    tagId?: string
 }
 
 type GetAllLogsResponse = {
-    logs: Log[]
+    logs: LogWithTags[]
     total: number
     page: number
     totalPages: number
@@ -22,26 +23,24 @@ export async function getAllLogs({
     sort = Sort.desc,
     page = 1,
     limit = 20,
-    search = ""
+    search = "",
+    tagId
 }: GetAllLogsParams = {}): Promise<GetAllLogsResponse> {
     try {
         const { user } = await getSession()
         if (!user) {
             throw new Error("User must be logged in to get logs")
         }
-        const userId = user.id
 
         const whereClause = {
-            AND: [
-                { userId },
-                { status: "Stopped" as const },
-                ...(search ? [{
-                    OR: [
-                        { category: { contains: search, mode: "insensitive" as const } },
-                        { description: { contains: search, mode: "insensitive" as const } }
-                    ]
-                }] : [])
-            ]
+            userId: user.id,
+            finishedAt: { not: null },
+            ...(search ? {
+                description: { contains: search, mode: "insensitive" as const }
+            } : {}),
+            ...(tagId ? {
+                tagIds: { has: tagId }
+            } : {})
         }
 
         const [logs, total] = await Promise.all([
@@ -51,7 +50,10 @@ export async function getAllLogs({
                     startedAt: sort
                 },
                 skip: (page - 1) * limit,
-                take: limit
+                take: limit,
+                include: {
+                    tags: true
+                }
             }),
             prisma.log.count({
                 where: whereClause

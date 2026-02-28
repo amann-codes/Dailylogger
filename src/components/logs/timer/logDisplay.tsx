@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -8,9 +8,9 @@ import { Badge } from "@/components/ui/badge"
 import { getFinishedLogs } from "@/lib/actions/getFinishedLogs"
 import { updateLog } from "@/lib/actions/updateLog"
 import { deleteLog } from "@/lib/actions/deleteLog"
-import { Log, Sort } from "@/lib/types"
-import { duration } from "@/lib/utils"
-import { ArrowUpDown, CalendarFold, ExternalLink, List, Loader2, Pencil, TableIcon, Trash2 } from "lucide-react"
+import { LogWithTags, Sort } from "@/lib/types"
+import { formatDuration, extractUrls, getDomain } from "@/lib/domain"
+import { ArrowUpDown, CalendarFold, ChevronLeft, ChevronRight, ExternalLink, List, Loader2, Pencil, TableIcon, Trash2 } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent } from "@/components/ui/dropdown-menu"
 import { Calendar } from "@/components/ui/calendar"
@@ -20,110 +20,37 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-export function LogsDisplay() {
-    const [sort, setSort] = useState<Sort>(Sort.desc);
-    const [date, setDate] = useState<Date>(new Date(new Date().setHours(0, 0, 0, 0)));
-    const [viewMode, setViewMode] = useState<"table" | "card">("table");
-    const [logToEdit, setLogToEdit] = useState<Log | null>(null);
-    const [logToDelete, setLogToDelete] = useState<Log | null>(null);
+const STORAGE_KEY = "dailylogger-view-mode"
 
-    const queryClient = useQueryClient();
-
-    const getLogsQuery = useQuery<Log[], Error>({
-        queryKey: ["logs", sort, date],
-        queryFn: () => getFinishedLogs(sort, date),
-    });
-
-    const updateLogMutation = useMutation({
-        mutationFn: async (updatedData: Log) => updateLog(updatedData),
-        onSuccess: () => {
-            toast.success("Log updated successfully!");
-            queryClient.invalidateQueries({ queryKey: ["logs", sort, date] });
-            queryClient.invalidateQueries({ queryKey: ["recent-logs"] });
-            setLogToEdit(null);
-        },
-        onError: (error) => {
-            toast.error(`Failed to update log: ${error.message}`);
-        },
-    });
-
-    const deleteLogMutation = useMutation({
-        mutationFn: async (logId: string) => deleteLog(logId),
-        onSuccess: () => {
-            toast.success("Log deleted successfully!");
-            queryClient.invalidateQueries({ queryKey: ["logs", sort, date] });
-            queryClient.invalidateQueries({ queryKey: ["recent-logs"] });
-            setLogToDelete(null);
-        },
-        onError: (error) => {
-            toast.error(`Failed to delete log: ${error.message}`);
-        },
-    });
-
-const handleUpdateSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!logToEdit) return;
-
-    const formData = new FormData(event.currentTarget);
-    const category = formData.get("category") as string;
-    const description = formData.get("description") as string;
-    const startTimeString = formData.get("startedAt") as string;
-    const finishTimeString = formData.get("finishedAt") as string;
-
-    const newStartedAt = new Date(logToEdit.startedAt);
-    if (startTimeString) {
-        const [hours, minutes] = startTimeString.split(':').map(Number);
-        newStartedAt.setHours(hours, minutes, 0, 0);
+// Component to render tags
+const TagsDisplay = ({ tags }: { tags: LogWithTags["tags"] }) => {
+    if (!tags || tags.length === 0) {
+        return <span className="text-xs text-muted-foreground/50">No tags</span>
     }
-
-    let newFinishedAt: Date | null = null;
-    if (finishTimeString) {
-        const baseDate = logToEdit.finishedAt ? new Date(logToEdit.finishedAt) : new Date(logToEdit.startedAt);
-        const [hours, minutes] = finishTimeString.split(':').map(Number);
-        baseDate.setHours(hours, minutes, 0, 0);
-        newFinishedAt = baseDate;
-    }
-
-    if (newFinishedAt && newStartedAt.getTime() > newFinishedAt.getTime()) {
-        newStartedAt.setDate(newStartedAt.getDate() - 1);
-    }
-    
-    const updatedData = {
-        id: logToEdit.id,
-        category: category,
-        description: description || null,
-        startedAt: newStartedAt,
-        finishedAt: newFinishedAt,
-    };
-
-    updateLogMutation.mutate(updatedData);
-};
-
-// Helper to extract URLs from text
-const extractUrls = (text: string): string[] => {
-    const urlRegex = /(https?:\/\/[^\s]+)/gi;
-    return text.match(urlRegex) || [];
-};
-
-// Helper to get domain from URL
-const getDomain = (url: string): string => {
-    try {
-        const domain = new URL(url).hostname.replace('www.', '');
-        return domain.length > 20 ? domain.substring(0, 20) + '...' : domain;
-    } catch {
-        return url.length > 20 ? url.substring(0, 20) + '...' : url;
-    }
-};
+    return (
+        <div className="flex flex-wrap gap-1">
+            {tags.map(tag => (
+                <Badge
+                    key={tag.id}
+                    style={{ backgroundColor: tag.color }}
+                    className="text-white text-xs"
+                >
+                    {tag.name}
+                </Badge>
+            ))}
+        </div>
+    )
+}
 
 // Component to render description with URLs
 const DescriptionDisplay = ({ description }: { description: string }) => {
-    const urls = extractUrls(description);
+    const urls = extractUrls(description)
     
     if (urls.length === 0) {
-        return <p className="text-xs text-muted-foreground line-clamp-2">{description}</p>;
+        return <p className="text-xs text-muted-foreground line-clamp-2">{description}</p>
     }
 
-    const textWithoutUrls = description.replace(/(https?:\/\/[^\s]+)/gi, '').trim();
+    const textWithoutUrls = description.replace(/(https?:\/\/[^\s]+)/gi, '').trim()
 
     return (
         <div className="space-y-1">
@@ -149,122 +76,253 @@ const DescriptionDisplay = ({ description }: { description: string }) => {
                 )}
             </div>
         </div>
-    );
-};
+    )
+}
+
+export function LogsDisplay() {
+    const [sort, setSort] = useState<Sort>(Sort.desc)
+    const [date, setDate] = useState<Date>(new Date(new Date().setHours(0, 0, 0, 0)))
+    const [viewMode, setViewMode] = useState<"table" | "card">("table")
+    const [logToEdit, setLogToEdit] = useState<LogWithTags | null>(null)
+    const [logToDelete, setLogToDelete] = useState<LogWithTags | null>(null)
+
+    const queryClient = useQueryClient()
+
+    // Load view preference from localStorage
+    useEffect(() => {
+        const saved = localStorage.getItem(STORAGE_KEY)
+        if (saved === "table" || saved === "card") {
+            setViewMode(saved)
+        }
+    }, [])
+
+    // Save view preference to localStorage
+    const handleViewModeChange = (mode: "table" | "card") => {
+        setViewMode(mode)
+        localStorage.setItem(STORAGE_KEY, mode)
+    }
+
+    const getLogsQuery = useQuery<LogWithTags[], Error>({
+        queryKey: ["logs", sort, date],
+        queryFn: () => getFinishedLogs(sort, date),
+    })
+
+    const updateLogMutation = useMutation({
+        mutationFn: async (updatedData: LogWithTags) => updateLog(updatedData),
+        onSuccess: () => {
+            toast.success("Activity updated")
+            queryClient.invalidateQueries({ queryKey: ["logs", sort, date] })
+            queryClient.invalidateQueries({ queryKey: ["recent-logs"] })
+            queryClient.invalidateQueries({ queryKey: ["daily-total"] })
+            setLogToEdit(null)
+        },
+        onError: (error) => {
+            toast.error(error instanceof Error ? error.message : "Failed to update activity")
+        },
+    })
+
+    const deleteLogMutation = useMutation({
+        mutationFn: async (logId: string) => deleteLog(logId),
+        onSuccess: () => {
+            toast.success("Activity deleted")
+            queryClient.invalidateQueries({ queryKey: ["logs", sort, date] })
+            queryClient.invalidateQueries({ queryKey: ["recent-logs"] })
+            queryClient.invalidateQueries({ queryKey: ["daily-total"] })
+            setLogToDelete(null)
+        },
+        onError: (error) => {
+            toast.error(error instanceof Error ? error.message : "Failed to delete activity")
+        },
+    })
+
+    const handleUpdateSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault()
+        if (!logToEdit) return
+
+        const formData = new FormData(event.currentTarget)
+        const description = formData.get("description") as string
+        const startTimeString = formData.get("startedAt") as string
+        const finishTimeString = formData.get("finishedAt") as string
+
+        const newStartedAt = new Date(logToEdit.startedAt)
+        if (startTimeString) {
+            const [hours, minutes] = startTimeString.split(':').map(Number)
+            newStartedAt.setHours(hours, minutes, 0, 0)
+        }
+
+        let newFinishedAt: Date | null = null
+        if (finishTimeString) {
+            const baseDate = logToEdit.finishedAt ? new Date(logToEdit.finishedAt) : new Date(logToEdit.startedAt)
+            const [hours, minutes] = finishTimeString.split(':').map(Number)
+            baseDate.setHours(hours, minutes, 0, 0)
+            newFinishedAt = baseDate
+        }
+
+        if (newFinishedAt && newStartedAt.getTime() > newFinishedAt.getTime()) {
+            newStartedAt.setDate(newStartedAt.getDate() - 1)
+        }
+
+        const updatedData = {
+            id: logToEdit.id,
+            description: description || null,
+            startedAt: newStartedAt,
+            finishedAt: newFinishedAt,
+            tagIds: logToEdit.tags?.map(t => t.id) || []
+        }
+
+        updateLogMutation.mutate(updatedData)
+    }
 
     const handleDeleteConfirm = () => {
-        if (!logToDelete?.id) return;
-        deleteLogMutation.mutate(logToDelete.id);
-    };
+        if (!logToDelete?.id) return
+        deleteLogMutation.mutate(logToDelete.id)
+    }
+
+    // Format date for display - shorter on mobile
+    const formatDateDisplay = (d: Date) => {
+        const today = new Date()
+        const yesterday = new Date(today)
+        yesterday.setDate(yesterday.getDate() - 1)
+        
+        if (d.toDateString() === today.toDateString()) return "Today"
+        if (d.toDateString() === yesterday.toDateString()) return "Yesterday"
+        
+        // Short format for mobile
+        return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+    }
 
     return (
         <Card className="max-w-2xl w-full sm:rounded-xl rounded-none sm:py-6 py-3">
-            <CardHeader className="flex sm:flex-row flex-col justify-between items-center gap-3">
-                <span className="text-xl">Your Daily Activities</span>
-                <div className="flex items-center gap-4">
-                    {getLogsQuery.data?.length !== 0 && (
-                        <Card className="p-0">
-                            <CardContent className="flex flex-row items-center justify-start p-1 h-9 ">
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setViewMode("card")}
-                                    className={`${viewMode === "card" ? "bg-accent" : ""}`}
-                                >
-                                    <List className="h-4 w-4" />
-                                </Button>
-                                <Separator orientation="vertical" className="p-0 mx-1" />
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setViewMode("table")}
-                                    className={`${viewMode === "table" ? "bg-accent" : ""}`}
-                                >
-                                    <TableIcon className="h-4 w-4" />
-                                </Button>
-                            </CardContent>
-                        </Card>
+            <CardHeader className="flex flex-col gap-3 px-3 sm:px-6">
+                <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-1.5">
+                        <span className="text-base sm:text-xl font-medium">Daily Activities</span>
+                        <Button
+                            disabled={!getLogsQuery.data || getLogsQuery.data.length === 0}
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => setSort((val) => (val === Sort.desc ? Sort.asc : Sort.desc))}
+                            aria-label={`Sort logs ${sort === Sort.desc ? "ascending" : "descending"}`}
+                        >
+                            <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+                        </Button>
+                    </div>
+                    {getLogsQuery.data && getLogsQuery.data.length > 0 && (
+                        <div className="hidden sm:flex border rounded-md p-0.5">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleViewModeChange("card")}
+                                className={`h-7 w-7 p-0 ${viewMode === "card" ? "bg-accent" : ""}`}
+                            >
+                                <List className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleViewModeChange("table")}
+                                className={`h-7 w-7 p-0 ${viewMode === "table" ? "bg-accent" : ""}`}
+                            >
+                                <TableIcon className="h-3.5 w-3.5" />
+                            </Button>
+                        </div>
                     )}
+                </div>
+                <div className="flex items-center justify-center gap-1 w-full">
                     <Button
-                        disabled={!getLogsQuery.data || getLogsQuery.data.length === 0}
-                        className="p-2 rounded-md border border-muted-foreground/20 bg-background hover:bg-muted/50 transition-colors shadow-sm"
-                        onClick={() => setSort((val) => (val === Sort.desc ? Sort.asc : Sort.desc))}
-                        aria-label={`Sort logs ${sort === Sort.desc ? "ascending" : "descending"}`}
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => {
+                            const prev = new Date(date)
+                            prev.setDate(prev.getDate() - 1)
+                            setDate(prev)
+                        }}
+                        aria-label="Previous day"
                     >
-                        <ArrowUpDown className="size-5 text-muted-foreground hover:text-primary" />
+                        <ChevronLeft className="h-4 w-4" />
                     </Button>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button
-                                className="flex items-center gap-2 p-2 rounded-md border border-muted-foreground/20 bg-background hover:bg-muted/50 transition-colors shadow-sm text-sm font-medium text-muted-foreground hover:text-primary"
+                                variant="outline"
+                                className="flex items-center gap-2 px-3 py-2 h-8 text-sm font-medium"
                                 aria-label="Select date"
                             >
-                                <CalendarFold className="size-5" />
-                                <span>{date.toDateString()}</span>
+                                <CalendarFold className="h-3.5 w-3.5" />
+                                <span>{formatDateDisplay(date)}</span>
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-full p-2 bg-background border rounded-md shadow-lg">
+                        <DropdownMenuContent align="center" className="w-auto p-2 bg-background border rounded-md shadow-lg">
                             <Calendar
                                 mode="single"
                                 selected={date}
                                 onSelect={(newDate) => {
                                     if (newDate) {
-                                        setDate(new Date(newDate.setHours(0, 0, 0, 0)));
+                                        setDate(new Date(newDate.setHours(0, 0, 0, 0)))
                                     } else {
-                                        setDate(new Date());
+                                        setDate(new Date())
                                     }
                                 }}
                                 className="rounded-md border-none"
                             />
                         </DropdownMenuContent>
                     </DropdownMenu>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => {
+                            const next = new Date(date)
+                            next.setDate(next.getDate() + 1)
+                            setDate(next)
+                        }}
+                        aria-label="Next day"
+                    >
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
                 </div>
             </CardHeader>
             <Separator />
-            <CardContent>
+            <CardContent className="px-3 sm:px-6">
                 {getLogsQuery.isLoading ? (
                     <div className="flex justify-center items-center py-9">
                         <Loader2 className="animate-spin" />
                     </div>
                 ) : getLogsQuery.isError ? (
-                    <p className="text-center py-9 text-destructive">{`Error: ${getLogsQuery.error.message}`}</p>
+                    <p className="text-center py-9 text-destructive text-sm">{`Error: ${getLogsQuery.error.message}`}</p>
                 ) : !getLogsQuery.data || getLogsQuery.data.length === 0 ? (
-                    <p className="text-center py-9 text-muted-foreground">No activities found for this date.</p>
-                ) : viewMode === "card" ? (
-                    <div className="w-full flex flex-col gap-3 h-96 overflow-y-auto">
+                    <p className="text-center py-9 text-muted-foreground text-sm">No activities found for this date.</p>
+                ) : viewMode === "card" || typeof window !== 'undefined' && window.innerWidth < 640 ? (
+                    <div className="w-full flex flex-col gap-2 sm:gap-3 max-h-80 sm:h-96 overflow-y-auto">
                         {getLogsQuery.data.map((log) => (
                             <Card key={log.id} className="w-full transition-colors">
-                                <CardHeader>
-                                    <div className="hidden sm:flex flex-col gap-3">
-                                        <div className="flex items-center justify-between">
-                                            <Badge variant="secondary" className="capitalize text-base">{log.category}</Badge>
-                                            {log.finishedAt && <span className="font-mono text-sm text-muted-foreground">{duration(log.startedAt, log.finishedAt)}</span>}
+                                <CardHeader className="p-3 sm:p-4">
+                                    <div className="flex flex-col gap-2 sm:gap-3">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <TagsDisplay tags={log.tags} />
+                                            {log.duration !== null && log.duration !== undefined && (
+                                                <span className="font-mono text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
+                                                    {formatDuration(log.duration)}
+                                                </span>
+                                            )}
                                         </div>
                                         {log.description && (
                                             <DescriptionDisplay description={log.description} />
                                         )}
                                         <div className="flex items-center justify-between">
-                                            <span className="text-sm text-muted-foreground">{log.startedAt.toLocaleString()}</span>
+                                            <span className="text-xs sm:text-sm text-muted-foreground">
+                                                {new Date(log.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
                                             <div className="flex items-center gap-1">
-                                                <Button variant="ghost" size="icon" className="h-7 w-7 bg-gray-200 rounded-full" onClick={() => setLogToEdit(log)}><Pencil className="h-4 w-4" /></Button>
-                                                <Button variant="ghost" size="icon" className="h-7 w-7 bg-gray-200 rounded-full" onClick={() => setLogToDelete(log)}><Trash2 className="h-4 w-4" /></Button>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 sm:h-7 sm:w-7 bg-gray-200 rounded-full" onClick={() => setLogToEdit(log)}>
+                                                    <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 sm:h-7 sm:w-7 bg-gray-200 rounded-full" onClick={() => setLogToDelete(log)}>
+                                                    <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                                                </Button>
                                             </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col gap-3 sm:hidden">
-                                        <div className="flex justify-between">
-                                            <Badge variant="secondary" className="capitalize text-base w-fit">{log.category}</Badge>
-                                            <div className="flex items-center gap-1 self-end">
-                                                <Button variant="ghost" size="icon" className="h-7 w-7 bg-gray-200 rounded-full" onClick={() => setLogToEdit(log)}><Pencil className="h-4 w-4" /></Button>
-                                                <Button variant="ghost" size="icon" className="h-7 w-7 bg-gray-200 rounded-full" onClick={() => setLogToDelete(log)}><Trash2 className="h-4 w-4" /></Button>
-                                            </div>
-                                        </div>
-                                        {log.description && (
-                                            <DescriptionDisplay description={log.description} />
-                                        )}
-                                        <div className="flex items-center justify-between text-sm text-muted-foreground">
-                                            <span>{log.startedAt.toLocaleString()}</span>
-                                            {log.finishedAt && <span className="font-mono">{duration(log.startedAt, log.finishedAt)}</span>}
                                         </div>
                                     </div>
                                 </CardHeader>
@@ -276,9 +334,9 @@ const DescriptionDisplay = ({ description }: { description: string }) => {
                         <Table className="w-full">
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Activity</TableHead>
-                                    <TableHead className="hidden sm:table-cell">Description</TableHead>
-                                    <TableHead>Started at</TableHead>
+                                    <TableHead>Tags</TableHead>
+                                    <TableHead>Description</TableHead>
+                                    <TableHead>Time</TableHead>
                                     <TableHead>Duration</TableHead>
                                     <TableHead>Actions</TableHead>
                                 </TableRow>
@@ -286,20 +344,30 @@ const DescriptionDisplay = ({ description }: { description: string }) => {
                             <TableBody>
                                 {getLogsQuery.data.map((log) => (
                                     <TableRow key={log.id}>
-                                        <TableCell><Badge variant="secondary" className="capitalize text-sm">{log.category}</Badge></TableCell>
-                                        <TableCell className="hidden sm:table-cell max-w-[200px]">
+                                        <TableCell>
+                                            <TagsDisplay tags={log.tags} />
+                                        </TableCell>
+                                        <TableCell className="max-w-[200px]">
                                             {log.description ? (
                                                 <DescriptionDisplay description={log.description} />
                                             ) : (
                                                 <span className="text-xs text-muted-foreground/50">-</span>
                                             )}
                                         </TableCell>
-                                        <TableCell>{log.startedAt.toLocaleTimeString()}</TableCell>
-                                        <TableCell>{log.finishedAt ? duration(log.startedAt, log.finishedAt) : "N/A"}</TableCell>
+                                        <TableCell>
+                                            {new Date(log.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </TableCell>
+                                        <TableCell className="font-mono">
+                                            {log.duration !== null && log.duration !== undefined ? formatDuration(log.duration) : "N/A"}
+                                        </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-1">
-                                                <Button variant="ghost" size="icon" className="h-7 w-7 bg-gray-200 rounded-full" onClick={() => setLogToEdit(log)}><Pencil className="h-4 w-4" /></Button>
-                                                <Button variant="ghost" size="icon" className="h-7 w-7 bg-gray-200 rounded-full" onClick={() => setLogToDelete(log)}><Trash2 className="h-4 w-4" /></Button>
+                                                <Button variant="ghost" size="icon" className="h-7 w-7 bg-gray-200 rounded-full" onClick={() => setLogToEdit(log)}>
+                                                    <Pencil className="h-4 w-4" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" className="h-7 w-7 bg-gray-200 rounded-full" onClick={() => setLogToDelete(log)}>
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -310,51 +378,54 @@ const DescriptionDisplay = ({ description }: { description: string }) => {
                 )}
             </CardContent>
 
+            {/* Edit Dialog */}
             <Dialog open={!!logToEdit} onOpenChange={() => setLogToEdit(null)}>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="sm:max-w-[425px] max-w-[calc(100vw-2rem)] mx-4">
                     <DialogHeader>
-                        <DialogTitle>Edit Activity</DialogTitle>
-                        <DialogDescription>Edit activity details. The date will be preserved.</DialogDescription>
+                        <DialogTitle className="text-base sm:text-lg">Edit Activity</DialogTitle>
+                        <DialogDescription className="text-xs sm:text-sm">Edit activity details.</DialogDescription>
                     </DialogHeader>
                     {logToEdit && (
-                        <form onSubmit={handleUpdateSubmit} className="grid gap-4 py-4">
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="category" className="text-right">Activity</Label>
-                                <Input id="category" name="category" defaultValue={logToEdit.category} className="col-span-3" />
+                        <form onSubmit={handleUpdateSubmit} className="grid gap-3 sm:gap-4 py-2 sm:py-4">
+                            <div className="flex flex-col sm:grid sm:grid-cols-4 sm:items-start gap-2 sm:gap-4">
+                                <Label className="sm:text-right text-xs sm:text-sm sm:pt-2">Tags</Label>
+                                <div className="sm:col-span-3">
+                                    <TagsDisplay tags={logToEdit.tags} />
+                                </div>
                             </div>
-                            <div className="grid grid-cols-4 items-start gap-4">
-                                <Label htmlFor="description" className="text-right pt-2">Description</Label>
+                            <div className="flex flex-col sm:grid sm:grid-cols-4 sm:items-start gap-2 sm:gap-4">
+                                <Label htmlFor="description" className="sm:text-right text-xs sm:text-sm sm:pt-2">Description</Label>
                                 <textarea
                                     id="description"
                                     name="description"
                                     defaultValue={logToEdit.description || ''}
                                     placeholder="Add description, notes, or URL..."
-                                    className="col-span-3 min-h-[80px] px-3 py-2 text-sm border rounded-md bg-background resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                                    className="sm:col-span-3 min-h-[70px] sm:min-h-[80px] px-3 py-2 text-sm border rounded-md bg-background resize-none focus:outline-none focus:ring-2 focus:ring-ring"
                                 />
                             </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="startedAt" className="text-right">Started At</Label>
+                            <div className="flex flex-col sm:grid sm:grid-cols-4 sm:items-center gap-2 sm:gap-4">
+                                <Label htmlFor="startedAt" className="sm:text-right text-xs sm:text-sm">Started</Label>
                                 <Input
                                     id="startedAt"
                                     name="startedAt"
                                     type="time"
-                                    defaultValue={logToEdit.startedAt.toTimeString().slice(0, 5)}
-                                    className="col-span-3"
+                                    defaultValue={new Date(logToEdit.startedAt).toTimeString().slice(0, 5)}
+                                    className="sm:col-span-3 h-9"
                                 />
                             </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="finishedAt" className="text-right">Finished At</Label>
+                            <div className="flex flex-col sm:grid sm:grid-cols-4 sm:items-center gap-2 sm:gap-4">
+                                <Label htmlFor="finishedAt" className="sm:text-right text-xs sm:text-sm">Finished</Label>
                                 <Input
                                     id="finishedAt"
                                     name="finishedAt"
                                     type="time"
-                                    defaultValue={logToEdit.finishedAt ? logToEdit.finishedAt.toTimeString().slice(0, 5) : ''}
-                                    className="col-span-3"
+                                    defaultValue={logToEdit.finishedAt ? new Date(logToEdit.finishedAt).toTimeString().slice(0, 5) : ''}
+                                    className="sm:col-span-3 h-9"
                                 />
                             </div>
-                            <DialogFooter>
-                                <Button type="submit" disabled={updateLogMutation.isPending}>
-                                    {updateLogMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Save Changes"}
+                            <DialogFooter className="pt-2">
+                                <Button type="submit" size="sm" className="w-full sm:w-auto" disabled={updateLogMutation.isPending}>
+                                    {updateLogMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Save"}
                                 </Button>
                             </DialogFooter>
                         </form>
@@ -362,22 +433,23 @@ const DescriptionDisplay = ({ description }: { description: string }) => {
                 </DialogContent>
             </Dialog>
 
+            {/* Delete Dialog */}
             <Dialog open={!!logToDelete} onOpenChange={() => setLogToDelete(null)}>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="sm:max-w-[425px] max-w-[calc(100vw-2rem)] mx-4">
                     <DialogHeader>
-                        <DialogTitle>Are you absolutely sure?</DialogTitle>
-                        <DialogDescription>
-                            This will permanently delete the log for: <span className="font-semibold">{logToDelete?.category}</span>.
+                        <DialogTitle className="text-base sm:text-lg">Delete Activity?</DialogTitle>
+                        <DialogDescription className="text-xs sm:text-sm">
+                            This will permanently delete this activity.
                         </DialogDescription>
                     </DialogHeader>
-                    <DialogFooter>
-                        <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
-                        <Button variant="destructive" onClick={handleDeleteConfirm} disabled={deleteLogMutation.isPending}>
+                    <DialogFooter className="flex-row gap-2 pt-2">
+                        <DialogClose asChild><Button variant="outline" size="sm" className="flex-1 sm:flex-none">Cancel</Button></DialogClose>
+                        <Button variant="destructive" size="sm" className="flex-1 sm:flex-none" onClick={handleDeleteConfirm} disabled={deleteLogMutation.isPending}>
                             {deleteLogMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Delete"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
         </Card>
-    );
+    )
 }

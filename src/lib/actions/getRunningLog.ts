@@ -2,20 +2,23 @@
 
 import { getSession } from "./getSession"
 import prisma from "../db";
-import { Log } from "../types";
+import { LogWithTags } from "../types";
 
-export default async function getRunningLog(): Promise<Log | null> {
+export default async function getRunningLog(): Promise<LogWithTags | null> {
     const { user } = await getSession();
     if (!user) {
-        throw new Error(`User must be logged in to get running clocks :${user}`)
+        throw new Error("User must be logged in to get running activity")
     }
+
     const runningLog = await prisma.log.findFirst({
         where: {
-            AND: [
-                { userId: user.id },
-                { status: "Running" }
-            ]
+            userId: user.id,
+            finishedAt: null // Running = finishedAt is null
+        },
+        include: {
+            tags: true
         }
     })
+
     return runningLog;
 }
