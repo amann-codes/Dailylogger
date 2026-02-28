@@ -212,7 +212,8 @@ export function HistoryPage() {
             description: description || null,
             startedAt: newStartedAt,
             finishedAt: newFinishedAt,
-            tagIds: logToEdit.tags?.map(t => t.id) || []
+            tagIds: logToEdit.tags?.map(t => t.id) || [],
+            tags: logToEdit.tags || []
         }
 
         updateLogMutation.mutate(updatedData)

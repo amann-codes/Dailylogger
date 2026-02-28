@@ -7,7 +7,7 @@ import { getRandomTagColor } from "@/lib/domain"
 
 export async function getTags(): Promise<Tag[]> {
     const { user } = await getSession()
-    if (!user) {
+    if (!user?.id) {
         throw new Error("User must be logged in to get tags")
     }
 
@@ -21,9 +21,11 @@ export async function getTags(): Promise<Tag[]> {
 
 export async function createTag(name: string, color?: string): Promise<Tag> {
     const { user } = await getSession()
-    if (!user) {
+    if (!user?.id) {
         throw new Error("User must be logged in to create tags")
     }
+
+    const userId = user.id
 
     const trimmedName = name.trim()
     if (!trimmedName) {
@@ -33,7 +35,7 @@ export async function createTag(name: string, color?: string): Promise<Tag> {
     // Check if tag already exists
     const existing = await prisma.tag.findFirst({
         where: {
-            userId: user.id,
+            userId,
             name: { equals: trimmedName, mode: "insensitive" }
         }
     })
@@ -46,7 +48,7 @@ export async function createTag(name: string, color?: string): Promise<Tag> {
         data: {
             name: trimmedName,
             color: color || getRandomTagColor(),
-            userId: user.id,
+            userId,
             logIds: []
         }
     })
@@ -56,7 +58,7 @@ export async function createTag(name: string, color?: string): Promise<Tag> {
 
 export async function updateTag(id: string, name?: string, color?: string): Promise<Tag> {
     const { user } = await getSession()
-    if (!user) {
+    if (!user?.id) {
         throw new Error("User must be logged in to update tags")
     }
 
@@ -73,7 +75,7 @@ export async function updateTag(id: string, name?: string, color?: string): Prom
 
 export async function deleteTag(id: string): Promise<void> {
     const { user } = await getSession()
-    if (!user) {
+    if (!user?.id) {
         throw new Error("User must be logged in to delete tags")
     }
 
@@ -111,7 +113,7 @@ export async function deleteTag(id: string): Promise<void> {
 
 export async function getOrCreateTag(name: string): Promise<Tag> {
     const { user } = await getSession()
-    if (!user) {
+    if (!user?.id) {
         throw new Error("User must be logged in")
     }
 
