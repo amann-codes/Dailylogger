@@ -64,7 +64,7 @@ const DescriptionDisplay = ({ description }: { description: string }) => {
                         href={url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] bg-muted hover:bg-muted/80 rounded transition-colors"
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] bg-muted hover:bg-muted/80 rounded transition-colors cursor-pointer"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <ExternalLink className="h-2.5 w-2.5" />
@@ -216,7 +216,7 @@ export function LogsDisplay() {
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8"
+                                className="h-8 w-8 cursor-pointer"
                                 onClick={() => {
                                     const prev = new Date(date)
                                     prev.setDate(prev.getDate() - 1)
@@ -230,7 +230,7 @@ export function LogsDisplay() {
                                 <DropdownMenuTrigger asChild>
                                     <Button
                                         variant="outline"
-                                        className="flex items-center gap-2 px-3 py-2 h-8 text-sm font-medium"
+                                        className="flex items-center gap-2 px-3 py-2 h-8 text-sm font-medium cursor-pointer"
                                         aria-label="Select date"
                                     >
                                         <CalendarFold className="h-3.5 w-3.5" />
@@ -258,7 +258,7 @@ export function LogsDisplay() {
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8"
+                                className="h-8 w-8 cursor-pointer"
                                 disabled={startOfDay(date).getTime() >= startOfDay(new Date()).getTime()}
                                 onClick={() => {
                                     const next = new Date(date)
@@ -277,7 +277,7 @@ export function LogsDisplay() {
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => handleViewModeChange("card")}
-                                        className={`h-7 w-7 p-0 ${viewMode === "card" ? "bg-accent" : ""}`}
+                                        className={`h-7 w-7 p-0 cursor-pointer ${viewMode === "card" ? "bg-accent" : ""}`}
                                         aria-label="Card view"
                                     >
                                         <List className="h-3.5 w-3.5" />
@@ -286,7 +286,7 @@ export function LogsDisplay() {
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => handleViewModeChange("table")}
-                                        className={`h-7 w-7 p-0 ${viewMode === "table" ? "bg-accent" : ""}`}
+                                        className={`h-7 w-7 p-0 cursor-pointer ${viewMode === "table" ? "bg-accent" : ""}`}
                                         aria-label="Table view"
                                     >
                                         <TableIcon className="h-3.5 w-3.5" />
@@ -296,7 +296,7 @@ export function LogsDisplay() {
                                     disabled={!getLogsQuery.data || getLogsQuery.data.length === 0}
                                     variant="ghost"
                                     size="icon"
-                                    className="h-7 w-7"
+                                    className="h-7 w-7 cursor-pointer"
                                     onClick={() => setSort((val) => (val === Sort.desc ? Sort.asc : Sort.desc))}
                                     aria-label={sort === Sort.desc ? "Sort ascending" : "Sort descending"}
                                 >
@@ -309,16 +309,25 @@ export function LogsDisplay() {
             </CardHeader>
             <Separator />
             <CardContent className="px-3 sm:px-6">
+                <div className="min-h-[14rem]">
                 {getLogsQuery.isLoading ? (
-                    <div className="flex justify-center items-center py-9">
-                        <Loader2 className="animate-spin" />
+                    <div className="flex flex-col justify-center items-center py-12 gap-3 min-h-[14rem]">
+                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">Loading activities…</span>
                     </div>
                 ) : getLogsQuery.isError ? (
-                    <p className="text-center py-9 text-destructive text-sm">{`Error: ${getLogsQuery.error.message}`}</p>
+                    <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-6 text-center min-h-[14rem] flex flex-col justify-center">
+                        <p className="text-destructive text-sm font-medium">Failed to load activities</p>
+                        <p className="text-muted-foreground text-xs mt-1">{getLogsQuery.error?.message}</p>
+                    </div>
                 ) : !getLogsQuery.data || getLogsQuery.data.length === 0 ? (
-                    <p className="text-center py-9 text-muted-foreground text-sm">No activities found for this date.</p>
+                    <div className="flex flex-col items-center justify-center py-12 text-center min-h-[14rem]">
+                        <CalendarFold className="h-10 w-10 text-muted-foreground/40 mb-2" />
+                        <p className="text-muted-foreground text-sm">No activities for this date.</p>
+                        <p className="text-muted-foreground/70 text-xs mt-0.5">Start an activity above to log it here.</p>
+                    </div>
                 ) : viewMode === "card" || typeof window !== 'undefined' && window.innerWidth < 640 ? (
-                    <div className="w-full flex flex-col gap-2 sm:gap-3 max-h-80 sm:h-96 overflow-y-auto">
+                    <div className="w-full flex flex-col gap-2 sm:gap-3 max-h-[min(24rem,50vh)] overflow-y-auto">
                         {getLogsQuery.data.map((log) => (
                             <Card key={log.id} className="w-full transition-colors">
                                 <CardHeader className="p-3 sm:p-4">
@@ -338,11 +347,11 @@ export function LogsDisplay() {
                                             <span className="text-xs sm:text-sm text-muted-foreground">
                                                 {new Date(log.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             </span>
-                                            <div className="flex items-center gap-1">
-                                                <Button variant="ghost" size="icon" className="h-6 w-6 sm:h-7 sm:w-7 bg-gray-200 rounded-full" onClick={() => setLogToEdit(log)}>
+                                            <div className="flex items-center gap-1 [&_button]:cursor-pointer">
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 sm:h-7 sm:w-7 bg-gray-200 rounded-full cursor-pointer" onClick={() => setLogToEdit(log)} aria-label="Edit activity">
                                                     <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
                                                 </Button>
-                                                <Button variant="ghost" size="icon" className="h-6 w-6 sm:h-7 sm:w-7 bg-gray-200 rounded-full" onClick={() => setLogToDelete(log)}>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 sm:h-7 sm:w-7 bg-gray-200 rounded-full cursor-pointer" onClick={() => setLogToDelete(log)} aria-label="Delete activity">
                                                     <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                                                 </Button>
                                             </div>
@@ -353,7 +362,7 @@ export function LogsDisplay() {
                         ))}
                     </div>
                 ) : (
-                    <div className="overflow-y-auto h-96 w-full rounded-md border">
+                    <div className="overflow-y-auto max-h-[min(24rem,50vh)] w-full rounded-md border">
                         <Table className="w-full">
                             <TableHeader>
                                 <TableRow>
@@ -384,11 +393,11 @@ export function LogsDisplay() {
                                             {log.duration !== null && log.duration !== undefined ? formatDuration(log.duration) : "N/A"}
                                         </TableCell>
                                         <TableCell>
-                                            <div className="flex items-center gap-1">
-                                                <Button variant="ghost" size="icon" className="h-7 w-7 bg-gray-200 rounded-full" onClick={() => setLogToEdit(log)}>
+                                            <div className="flex items-center gap-1 [&_button]:cursor-pointer">
+                                                <Button variant="ghost" size="icon" className="h-7 w-7 bg-gray-200 rounded-full cursor-pointer" onClick={() => setLogToEdit(log)} aria-label="Edit activity">
                                                     <Pencil className="h-4 w-4" />
                                                 </Button>
-                                                <Button variant="ghost" size="icon" className="h-7 w-7 bg-gray-200 rounded-full" onClick={() => setLogToDelete(log)}>
+                                                <Button variant="ghost" size="icon" className="h-7 w-7 bg-gray-200 rounded-full cursor-pointer" onClick={() => setLogToDelete(log)} aria-label="Delete activity">
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
                                             </div>
@@ -399,6 +408,7 @@ export function LogsDisplay() {
                         </Table>
                     </div>
                 )}
+                </div>
             </CardContent>
 
             {/* Edit Dialog */}

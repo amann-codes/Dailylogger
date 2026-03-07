@@ -31,7 +31,7 @@ function DescriptionWithUrls({ description }: { description: string }) {
                         href={url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-muted hover:bg-muted/80 rounded-md transition-colors group"
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-muted hover:bg-muted/80 rounded-md transition-colors group cursor-pointer"
                     >
                         <ExternalLink className="h-3 w-3 text-muted-foreground group-hover:text-foreground" />
                         <span className="text-muted-foreground group-hover:text-foreground truncate max-w-[150px]">
@@ -81,7 +81,7 @@ export function RecentActivities() {
                     variant="outline"
                     size="icon"
                     onClick={() => setIsExpanded(!isExpanded)}
-                    className="h-14 w-10 rounded-l-lg rounded-r-none border-r-0 bg-black hover:bg-black/90 shadow-md"
+                    className="h-14 w-10 rounded-l-lg rounded-r-none border-r-0 bg-black hover:bg-black/90 shadow-md cursor-pointer"
                     aria-label={isExpanded ? "Collapse recent activities" : "Expand recent activities"}
                 >
                     {isExpanded ? (
@@ -108,18 +108,20 @@ export function RecentActivities() {
 
                         <div className="flex-1 overflow-y-auto space-y-3 pr-1">
                             {isLoading ? (
-                                <div className="flex justify-center items-center h-32">
-                                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                                <div className="flex flex-col justify-center items-center h-32 gap-2">
+                                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                                    <span className="text-xs text-muted-foreground">Loading…</span>
                                 </div>
                             ) : isError ? (
-                                <p className="text-center text-sm text-destructive py-8">
-                                    {error?.message || "Failed to load activities"}
-                                </p>
+                                <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-6 text-center">
+                                    <p className="text-destructive text-sm font-medium">Failed to load</p>
+                                    <p className="text-muted-foreground text-xs mt-1">{error?.message || "Try again later."}</p>
+                                </div>
                             ) : !logs || logs.length === 0 ? (
-                                <div className="text-center py-8">
-                                    <Activity className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
-                                    <p className="text-sm text-muted-foreground">No recent activities</p>
-                                    <p className="text-xs text-muted-foreground/70">Start tracking your activities!</p>
+                                <div className="flex flex-col items-center justify-center text-center py-10">
+                                    <Activity className="h-10 w-10 mx-auto mb-2 text-muted-foreground/40" />
+                                    <p className="text-sm font-medium text-muted-foreground">No recent activities</p>
+                                    <p className="text-xs text-muted-foreground/70 mt-0.5">Start an activity to see it here.</p>
                                 </div>
                             ) : (
                                 logs.map((log) => (

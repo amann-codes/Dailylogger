@@ -9,7 +9,7 @@ import getRunningLog from "@/lib/actions/getRunningLog"
 import { udpateLogStatus } from "@/lib/actions/updateLogStatus"
 import { getTags, createTag, updateTag, deleteTag } from "@/lib/actions/tags"
 import { toast } from "sonner"
-import { Header } from "@/components/layout/header"
+import { FloatingUserButton } from "@/components/layout/floatingUserButton"
 import { Tag } from "@/lib/types"
 
 export default function ActivityPage() {
@@ -82,24 +82,30 @@ export default function ActivityPage() {
     })
 
     return (
-        <div className="flex flex-col min-h-screen w-full sm:items-center pt-14 sm:pt-16 sm:space-y-4 space-y-2 pb-8 bg-gradient-to-br from-sky-50 via-slate-50 to-emerald-50">
-            <Header />
-            <CreateLog
-                handleCreate={(description, tagIds, startedAtISO) =>
-                    createLogMutation({ description, tagIds, startedAtISO })
-                }
-                handleUpdate={(finishedAtISO) => updateLogMutation(finishedAtISO)}
-                isCreating={isCreating}
-                isUpdating={isUpdating}
-                isFetchingRunningLog={getRunningLogQuery.isFetching}
-                runningLog={getRunningLogQuery.data || null}
-                tags={tagsQuery.data || []}
-                onCreateTag={handleCreateTag}
-                onUpdateTag={(tagId, name, color) => updateTagMutation({ id: tagId, name, color })}
-                onDeleteTag={(tagId) => deleteTagMutation(tagId)}
-                isDeletingTag={isDeletingTag}
-            />
-            <LogsDisplay />
+        <div className="flex flex-col h-screen w-full overflow-hidden bg-gradient-to-br from-sky-50 via-slate-50 to-emerald-50">
+            <FloatingUserButton />
+            <div className="flex-1 min-h-0 overflow-y-auto">
+                <div className="w-full max-w-2xl mx-auto px-3 sm:px-6 pt-4 sm:pt-6 pb-8 sm:pb-10 flex flex-col gap-4 sm:gap-6">
+                    <CreateLog
+                        handleCreate={(description, tagIds, startedAtISO) =>
+                            createLogMutation({ description, tagIds, startedAtISO })
+                        }
+                        handleUpdate={(finishedAtISO) => updateLogMutation(finishedAtISO)}
+                        isCreating={isCreating}
+                        isUpdating={isUpdating}
+                        isFetchingRunningLog={getRunningLogQuery.isFetching}
+                        runningLog={getRunningLogQuery.data || null}
+                        tags={tagsQuery.data || []}
+                        isTagsLoading={tagsQuery.isLoading}
+                        tagsError={tagsQuery.isError ? (tagsQuery.error as Error) ?? new Error("Failed to load tags") : null}
+                        onCreateTag={handleCreateTag}
+                        onUpdateTag={(tagId, name, color) => updateTagMutation({ id: tagId, name, color })}
+                        onDeleteTag={(tagId) => deleteTagMutation(tagId)}
+                        isDeletingTag={isDeletingTag}
+                    />
+                    <LogsDisplay />
+                </div>
+            </div>
             <RecentActivities />
         </div>
     )

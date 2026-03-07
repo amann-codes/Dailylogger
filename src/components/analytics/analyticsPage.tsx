@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { getAnalytics } from "@/lib/actions/analytics"
 import { formatDuration, startOfDay, endOfDay, daysAgo } from "@/lib/domain"
-import { Header } from "@/components/layout/header"
+import { FloatingUserButton } from "@/components/layout/floatingUserButton"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -57,26 +57,34 @@ export function AnalyticsPage() {
 
     if (isLoading) {
         return (
-            <div className="flex flex-col min-h-screen w-full sm:items-center pt-14 sm:pt-16 pb-8 px-0 sm:px-4 bg-gradient-to-br from-sky-50 via-slate-50 to-emerald-50">
-                <Header />
-                <Card className="max-w-5xl w-full sm:rounded-xl rounded-none border-0 sm:border shadow-sm">
-                    <CardContent className="flex items-center justify-center py-24">
-                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                    </CardContent>
-                </Card>
+            <div className="flex flex-col h-screen w-full overflow-hidden bg-gradient-to-br from-sky-50 via-slate-50 to-emerald-50">
+                <FloatingUserButton />
+                <div className="flex-1 min-h-0 overflow-y-auto flex items-center justify-center py-24">
+                    <Card className="max-w-5xl w-full mx-4 sm:rounded-xl rounded-none border-0 sm:border shadow-sm">
+                        <CardContent className="flex flex-col items-center justify-center py-24 gap-3">
+                            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                            <span className="text-sm text-muted-foreground">Loading analytics…</span>
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
         )
     }
 
     if (isError) {
         return (
-            <div className="flex flex-col min-h-screen w-full sm:items-center pt-14 sm:pt-16 pb-8 px-0 sm:px-4 bg-gradient-to-br from-sky-50 via-slate-50 to-emerald-50">
-                <Header />
-                <Card className="max-w-5xl w-full sm:rounded-xl rounded-none border-0 sm:border shadow-sm">
-                    <CardContent className="py-24 text-center">
-                        <p className="text-destructive">{error?.message || "Failed to load analytics"}</p>
-                    </CardContent>
-                </Card>
+            <div className="flex flex-col h-screen w-full overflow-hidden bg-gradient-to-br from-sky-50 via-slate-50 to-emerald-50">
+                <FloatingUserButton />
+                <div className="flex-1 min-h-0 overflow-y-auto flex items-center justify-center py-24">
+                    <Card className="max-w-5xl w-full mx-4 sm:rounded-xl rounded-none border-0 sm:border shadow-sm">
+                        <CardContent className="py-24 text-center">
+                            <div className="rounded-lg border border-destructive/30 bg-destructive/5 inline-block px-6 py-4 text-left">
+                                <p className="text-destructive font-medium">Failed to load analytics</p>
+                                <p className="text-muted-foreground text-sm mt-1">{error?.message || "Something went wrong."}</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
         )
     }
@@ -109,15 +117,17 @@ export function AnalyticsPage() {
     }))
 
     return (
-        <div className="flex flex-col min-h-screen w-full sm:items-center sm:justify-start sm:space-y-4 pt-14 sm:pt-16 pb-8 px-0 sm:px-4 bg-gradient-to-br from-sky-50 via-slate-50 to-emerald-50">
-            <Header />
+        <div className="flex flex-col h-screen w-full overflow-hidden bg-gradient-to-br from-sky-50 via-slate-50 to-emerald-50">
+            <FloatingUserButton />
+            <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="flex flex-col w-full sm:items-center sm:justify-start sm:space-y-4 pt-4 sm:pt-6 pb-8 sm:pb-10 px-0 sm:px-4">
 
             <Card className="max-w-5xl w-full sm:rounded-xl rounded-none sm:py-6 py-3 border-0 sm:border shadow-sm">
                 <CardHeader className="flex flex-col gap-4 px-3 sm:px-6 pb-2">
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 shrink-0 -ml-1.5 mb-1 text-muted-foreground hover:text-foreground"
+                        className="h-7 w-7 shrink-0 -ml-1.5 mb-1 text-muted-foreground hover:text-foreground cursor-pointer"
                         onClick={() => router.back()}
                         aria-label="Go back"
                     >
@@ -136,6 +146,15 @@ export function AnalyticsPage() {
                 <Separator />
 
                 <CardContent className="px-3 sm:px-6 pt-4 sm:pt-6 space-y-4 sm:space-y-6">
+                {/* Empty state when no data */}
+                {totalLogs === 0 && (
+                    <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 px-4 py-8 sm:py-10 text-center">
+                        <BarChart3 className="h-12 w-12 mx-auto mb-3 text-muted-foreground/40" />
+                        <p className="text-sm font-medium text-muted-foreground">No analytics data yet</p>
+                        <p className="text-xs text-muted-foreground/70 mt-1">Log activities on the Activity page to see your stats here.</p>
+                    </div>
+                )}
+
                 {/* Stats Cards */}
                 <div className="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-4">
                     <Card>
@@ -356,6 +375,8 @@ export function AnalyticsPage() {
                 </Card>
                 </CardContent>
             </Card>
+            </div>
+            </div>
         </div>
     )
 }

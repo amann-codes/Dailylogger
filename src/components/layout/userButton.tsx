@@ -14,7 +14,7 @@ export function UserButton() {
     const image = session?.user?.image
     return (
         <DropdownMenu>
-            <DropdownMenuTrigger>
+            <DropdownMenuTrigger className="cursor-pointer">
                 <Avatar>
                     {
                         image &&
@@ -28,13 +28,9 @@ export function UserButton() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
                 <DropdownMenuItem>{name}</DropdownMenuItem>
-                <DropdownMenuItem>{email}</DropdownMenuItem>
-                <Link href={'/history'}>
-                    <DropdownMenuItem><History />History</DropdownMenuItem>
-                </Link>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => signOut()}>
-                    Sign out <LogOutIcon />
+                    Sign out <LogOutIcon className="w-4 h-4" />
                 </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu >

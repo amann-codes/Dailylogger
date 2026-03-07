@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { LogWithTags, Tag } from "@/lib/types"
-import { Check, ChevronDown, ChevronUp, MoreHorizontal, Plus, X } from "lucide-react"
+import { Check, ChevronDown, ChevronUp, Loader2, MoreHorizontal, Plus, X } from "lucide-react"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -23,6 +23,8 @@ type LogProps = {
     isFetchingRunningLog: boolean
     runningLog: LogWithTags | null
     tags: Tag[]
+    isTagsLoading?: boolean
+    tagsError?: Error | null
     onCreateTag: (name: string) => Promise<Tag>
     onUpdateTag?: (tagId: string, name: string, color: string) => void
     onDeleteTag: (tagId: string) => void
@@ -37,6 +39,8 @@ export function CreateLog({
     isFetchingRunningLog, 
     runningLog,
     tags,
+    isTagsLoading = false,
+    tagsError = null,
     onCreateTag,
     onUpdateTag,
     onDeleteTag,
@@ -186,7 +190,19 @@ export function CreateLog({
 
             {/* TAG CHIPS - same pattern as FlairList: badge expands on hover, icon appears beside text */}
             <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
-                {tags.map(tag => (
+                {isTagsLoading ? (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span className="text-xs sm:text-sm">Loading tags…</span>
+                    </div>
+                ) : tagsError ? (
+                    <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                        {tagsError.message || "Failed to load tags."}
+                    </div>
+                ) : tags.length === 0 && !showTagInput ? (
+                    <p className="text-xs sm:text-sm text-muted-foreground">No tags yet.</p>
+                ) : null}
+                {!isTagsLoading && !tagsError && tags.map(tag => (
                     <div key={tag.id} className={cn("relative group mx-0.5", running && "opacity-70")}>
                         {tagToEdit?.id === tag.id ? (
                             <div
@@ -227,7 +243,7 @@ export function CreateLog({
                                             toast.success("Tag updated")
                                         } else if (!editTagName.trim()) toast.error("Tag name cannot be empty")
                                     }}
-                                    className="rounded-full p-1 hover:bg-white/20 text-white"
+                                    className="rounded-full p-1 hover:bg-white/20 text-white cursor-pointer"
                                     aria-label="Save"
                                 >
                                     <Check className="h-3.5 w-3.5" />
@@ -235,7 +251,7 @@ export function CreateLog({
                                 <button
                                     type="button"
                                     onClick={() => setTagToEdit(null)}
-                                    className="rounded-full p-1 hover:bg-white/20 text-white"
+                                    className="rounded-full p-1 hover:bg-white/20 text-white cursor-pointer"
                                     aria-label="Cancel"
                                 >
                                     <X className="h-3.5 w-3.5" />
@@ -248,7 +264,7 @@ export function CreateLog({
                                     onClick={() => !running && toggleTag(tag.id)}
                                     disabled={isDisabled || running}
                                     className={cn(
-                                        "rounded-full border text-xs sm:text-sm transition-all px-2.5 py-1 sm:px-3 sm:py-1.5 text-left",
+                                        "rounded-full border text-xs sm:text-sm transition-all px-2.5 py-1 sm:px-3 sm:py-1.5 text-left cursor-pointer disabled:cursor-not-allowed",
                                         "group-hover:pr-6",
                                         selectedTagIds.includes(tag.id)
                                             ? "border-transparent shadow-sm text-white"
@@ -306,7 +322,7 @@ export function CreateLog({
                     <button
                         type="button"
                         onClick={() => setShowTagInput(true)}
-                        className="px-2.5 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm rounded-full border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-muted-foreground/50 hover:text-foreground transition-all flex items-center gap-1"
+                        className="px-2.5 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm rounded-full border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-muted-foreground/50 hover:text-foreground transition-all flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"
                         disabled={isDisabled}
                     >
                         <Plus className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
@@ -346,7 +362,7 @@ export function CreateLog({
                     <button
                         type="button"
                         onClick={() => setShowDescription(!showDescription)}
-                        className="flex items-center justify-center gap-1.5 w-full text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors"
+                        className="flex items-center justify-center gap-1.5 w-full text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:cursor-not-allowed"
                         disabled={isDisabled}
                     >
                         {showDescription ? <ChevronUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
@@ -374,7 +390,21 @@ export function CreateLog({
                 className="w-full text-sm sm:text-base font-medium h-11 sm:h-12"
                 aria-label={running ? "Stop activity" : "Start activity"}
             >
-                {running ? "Stop" : "Start"}
+                {isCreating && !running ? (
+                    <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Starting…
+                    </>
+                ) : isUpdating && running ? (
+                    <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Stopping…
+                    </>
+                ) : running ? (
+                    "Stop"
+                ) : (
+                    "Start"
+                )}
             </Button>
         </div>
     )
