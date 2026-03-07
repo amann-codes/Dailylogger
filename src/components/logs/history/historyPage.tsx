@@ -32,10 +32,8 @@ import {
     Search,
     TableIcon,
     Trash2,
-    X,
-    BarChart3
+    X
 } from "lucide-react"
-import Link from "next/link"
 
 const STORAGE_KEY = "dailylogger-history-view-mode"
 
@@ -240,78 +238,30 @@ export function HistoryPage() {
     const total = data?.total || 0
 
     return (
-        <div className="flex flex-col min-h-screen w-full sm:items-center sm:justify-start sm:space-y-4 sm:pt-8 pt-4 pb-8 px-0 sm:px-4 bg-gradient-to-br from-sky-50 via-slate-50 to-emerald-50">
+        <div className="flex flex-col min-h-screen w-full sm:items-center sm:justify-start sm:space-y-4 pt-14 sm:pt-16 pb-8 px-0 sm:px-4 bg-gradient-to-br from-sky-50 via-slate-50 to-emerald-50">
             <Header />
             
-            <Card className="max-w-4xl w-full sm:rounded-xl rounded-none sm:py-6 py-3">
-                <CardHeader className="flex flex-col gap-3 sm:gap-4 px-3 sm:px-6">
-                    <div className="flex flex-row justify-between items-center gap-2">
-                        <div className="flex items-center gap-2">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 sm:h-9 sm:w-9 shrink-0"
-                                onClick={() => router.back()}
-                                aria-label="Go back"
-                            >
-                                <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
-                            </Button>
-                            <Link href="/">
-                                <Button variant="ghost" size="sm" className="h-8 px-2 sm:px-3 text-xs sm:text-sm gap-1.5">
-                                    Activity
-                                </Button>
-                            </Link>
-                            <History className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
-                            <span className="text-base sm:text-xl font-medium">History</span>
-                            {total > 0 && (
-                                <Badge variant="secondary" className="text-[10px] sm:text-xs">
-                                    {total}
-                                </Badge>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-1.5 sm:gap-2">
-                            <Link href="/analytics">
-                                <Button variant="outline" size="sm" className="gap-1.5 h-8 px-2 sm:px-3 text-xs sm:text-sm">
-                                    <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                                    <span className="hidden sm:inline">Analytics</span>
-                                </Button>
-                            </Link>
-                            {logs.length > 0 && (
-                                <div className="hidden sm:flex border rounded-md p-0.5">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleViewModeChange("card")}
-                                        className={`h-7 w-7 p-0 ${viewMode === "card" ? "bg-accent" : ""}`}
-                                    >
-                                        <List className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleViewModeChange("table")}
-                                        className={`h-7 w-7 p-0 ${viewMode === "table" ? "bg-accent" : ""}`}
-                                    >
-                                        <TableIcon className="h-3.5 w-3.5" />
-                                    </Button>
-                                </div>
-                            )}
-                            <Button
-                                disabled={logs.length === 0}
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => {
-                                    setSort((val) => (val === Sort.desc ? Sort.asc : Sort.desc))
-                                    setPage(1)
-                                }}
-                            >
-                                <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
-                            </Button>
-                        </div>
+            <Card className="max-w-4xl w-full sm:rounded-xl rounded-none sm:py-6 py-3 border-0 sm:border shadow-sm">
+                <CardHeader className="flex flex-col gap-4 px-3 sm:px-6 pb-2">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 shrink-0 -ml-1.5 mb-1 text-muted-foreground hover:text-foreground"
+                        onClick={() => router.back()}
+                        aria-label="Go back"
+                    >
+                        <ArrowLeft className="h-3.5 w-3.5" />
+                    </Button>
+
+                    {/* Title - clean, no icon */}
+                    <div>
+                        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">History</h1>
+                        <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                            {total > 0 ? `${total} activit${total === 1 ? "y" : "ies"}` : "All your logged activities"}
+                        </p>
                     </div>
 
-                    {/* Tag filter */}
+                    {/* Tag filter + view/sort toolbar */}
                     {tagsQuery.data && tagsQuery.data.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 -mx-1 px-1 overflow-x-auto pb-1">
                             <button
@@ -339,30 +289,68 @@ export function HistoryPage() {
                         </div>
                     )}
 
-                    {/* Search bar */}
-                    <form onSubmit={handleSearch} className="flex gap-2">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Search..."
-                                value={searchInput}
-                                onChange={(e) => setSearchInput(e.target.value)}
-                                className="pl-9 pr-9 h-9 text-sm"
-                            />
-                            {searchInput && (
-                                <button
-                                    type="button"
-                                    onClick={clearSearch}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    {/* Search bar + view + sort on one line */}
+                    <div className="flex flex-wrap items-center gap-2">
+                        <form onSubmit={handleSearch} className="flex gap-2 flex-1 min-w-0">
+                            <div className="relative flex-1 min-w-[120px]">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Search..."
+                                    value={searchInput}
+                                    onChange={(e) => setSearchInput(e.target.value)}
+                                    className="pl-9 pr-9 h-9 text-sm"
+                                />
+                                {searchInput && (
+                                    <button
+                                        type="button"
+                                        onClick={clearSearch}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                )}
+                            </div>
+                            <Button type="submit" variant="secondary" size="sm" className="h-9 shrink-0">
+                                Search
+                            </Button>
+                        </form>
+                        {logs.length > 0 && (
+                            <>
+                                <div className="flex items-center rounded-lg border border-muted-foreground/20 bg-muted/30 p-0.5 shrink-0">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleViewModeChange("card")}
+                                        className={`h-8 w-8 p-0 rounded-md ${viewMode === "card" ? "bg-background shadow-sm" : ""}`}
+                                        aria-label="Card view"
+                                    >
+                                        <List className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleViewModeChange("table")}
+                                        className={`h-8 w-8 p-0 rounded-md ${viewMode === "table" ? "bg-background shadow-sm" : ""}`}
+                                        aria-label="Table view"
+                                    >
+                                        <TableIcon className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-8 w-8 rounded-lg border-muted-foreground/20 shrink-0"
+                                    onClick={() => {
+                                        setSort((val) => (val === Sort.desc ? Sort.asc : Sort.desc))
+                                        setPage(1)
+                                    }}
+                                    aria-label={sort === Sort.desc ? "Sort ascending" : "Sort descending"}
                                 >
-                                    <X className="h-4 w-4" />
-                                </button>
-                            )}
-                        </div>
-                        <Button type="submit" variant="secondary" size="sm" className="h-9">
-                            Search
-                        </Button>
-                    </form>
+                                    <ArrowUpDown className="h-4 w-4" />
+                                </Button>
+                            </>
+                        )}
+                    </div>
 
                     {search && (
                         <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">

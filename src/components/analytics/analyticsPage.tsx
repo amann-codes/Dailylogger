@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { getAnalytics } from "@/lib/actions/analytics"
 import { formatDuration, startOfDay, endOfDay, daysAgo } from "@/lib/domain"
@@ -30,7 +31,6 @@ import {
     Zap,
     ArrowLeft
 } from "lucide-react"
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
 
 const ANALYTICS_DAYS = 30
@@ -53,18 +53,30 @@ export function AnalyticsPage() {
         queryFn: () => getAnalytics(range),
     })
 
+    const router = useRouter()
+
     if (isLoading) {
         return (
-            <div className="flex flex-col min-h-screen w-full items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <div className="flex flex-col min-h-screen w-full sm:items-center pt-14 sm:pt-16 pb-8 px-0 sm:px-4 bg-gradient-to-br from-sky-50 via-slate-50 to-emerald-50">
+                <Header />
+                <Card className="max-w-5xl w-full sm:rounded-xl rounded-none border-0 sm:border shadow-sm">
+                    <CardContent className="flex items-center justify-center py-24">
+                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </CardContent>
+                </Card>
             </div>
         )
     }
 
     if (isError) {
         return (
-            <div className="flex flex-col min-h-screen w-full items-center justify-center">
-                <p className="text-destructive">{error?.message || "Failed to load analytics"}</p>
+            <div className="flex flex-col min-h-screen w-full sm:items-center pt-14 sm:pt-16 pb-8 px-0 sm:px-4 bg-gradient-to-br from-sky-50 via-slate-50 to-emerald-50">
+                <Header />
+                <Card className="max-w-5xl w-full sm:rounded-xl rounded-none border-0 sm:border shadow-sm">
+                    <CardContent className="py-24 text-center">
+                        <p className="text-destructive">{error?.message || "Failed to load analytics"}</p>
+                    </CardContent>
+                </Card>
             </div>
         )
     }
@@ -97,28 +109,33 @@ export function AnalyticsPage() {
     }))
 
     return (
-        <div className="flex flex-col min-h-screen w-full sm:items-center sm:space-y-4 sm:pt-8 pt-4 pb-8 px-3 sm:px-4 bg-gradient-to-br from-sky-50 via-slate-50 to-emerald-50">
+        <div className="flex flex-col min-h-screen w-full sm:items-center sm:justify-start sm:space-y-4 pt-14 sm:pt-16 pb-8 px-0 sm:px-4 bg-gradient-to-br from-sky-50 via-slate-50 to-emerald-50">
             <Header />
 
-            <div className="max-w-5xl w-full space-y-4 sm:space-y-6">
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 sm:gap-3">
-                        <Link href="/history">
-                            <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10">
-                                <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
-                            </Button>
-                        </Link>
-                        <div>
-                            <h1 className="text-lg sm:text-2xl font-bold flex items-center gap-1.5 sm:gap-2">
-                                <BarChart3 className="h-4 w-4 sm:h-6 sm:w-6" />
-                                Analytics
-                            </h1>
-                            <p className="text-xs sm:text-sm text-muted-foreground">Last 30 days</p>
-                        </div>
-                    </div>
-                </div>
+            <Card className="max-w-5xl w-full sm:rounded-xl rounded-none sm:py-6 py-3 border-0 sm:border shadow-sm">
+                <CardHeader className="flex flex-col gap-4 px-3 sm:px-6 pb-2">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 shrink-0 -ml-1.5 mb-1 text-muted-foreground hover:text-foreground"
+                        onClick={() => router.back()}
+                        aria-label="Go back"
+                    >
+                        <ArrowLeft className="h-3.5 w-3.5" />
+                    </Button>
 
+                    {/* Title - no icon, same as History */}
+                    <div>
+                        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">Analytics</h1>
+                        <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                            Last 30 days
+                        </p>
+                    </div>
+                </CardHeader>
+
+                <Separator />
+
+                <CardContent className="px-3 sm:px-6 pt-4 sm:pt-6 space-y-4 sm:space-y-6">
                 {/* Stats Cards */}
                 <div className="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-4">
                     <Card>
@@ -337,7 +354,8 @@ export function AnalyticsPage() {
                         </div>
                     </CardContent>
                 </Card>
-            </div>
+                </CardContent>
+            </Card>
         </div>
     )
 }

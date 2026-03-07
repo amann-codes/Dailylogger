@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { LogWithTags, Tag } from "@/lib/types"
-import { ChevronDown, ChevronUp, MoreHorizontal, Plus, X } from "lucide-react"
+import { Check, ChevronDown, ChevronUp, MoreHorizontal, Plus, X } from "lucide-react"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -24,6 +24,7 @@ type LogProps = {
     runningLog: LogWithTags | null
     tags: Tag[]
     onCreateTag: (name: string) => Promise<Tag>
+    onUpdateTag?: (tagId: string, name: string, color: string) => void
     onDeleteTag: (tagId: string) => void
     isDeletingTag?: boolean
 }
@@ -37,6 +38,7 @@ export function CreateLog({
     runningLog,
     tags,
     onCreateTag,
+    onUpdateTag,
     onDeleteTag,
     isDeletingTag = false,
 }: LogProps) {
@@ -47,6 +49,9 @@ export function CreateLog({
     const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
     const [newTagName, setNewTagName] = useState("")
     const [showTagInput, setShowTagInput] = useState(false)
+    const [tagToEdit, setTagToEdit] = useState<Tag | null>(null)
+    const [editTagName, setEditTagName] = useState("")
+    const [editTagColor, setEditTagColor] = useState("#6366f1")
     const baseElapsedRef = useRef(0)
     const startAtRef = useRef<number | null>(null)
     const rafRef = useRef<number | null>(null)
@@ -179,62 +184,121 @@ export function CreateLog({
                 </div>
             </div>
 
-            {/* TAG CHIPS - Subordinate, centered */}
+            {/* TAG CHIPS - same pattern as FlairList: badge expands on hover, icon appears beside text */}
             <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
                 {tags.map(tag => (
-                    <div
-                        key={tag.id}
-                        className={cn(
-                            "inline-flex items-center rounded-full border transition-all overflow-hidden",
-                            selectedTagIds.includes(tag.id)
-                                ? "border-transparent shadow-sm"
-                                : "border-muted-foreground/20",
-                            running && "opacity-70"
-                        )}
-                        style={selectedTagIds.includes(tag.id) ? { backgroundColor: tag.color } : {}}
-                    >
-                        <button
-                            type="button"
-                            onClick={() => !running && toggleTag(tag.id)}
-                            disabled={isDisabled || running}
-                            className={cn(
-                                "px-2.5 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm text-left",
-                                selectedTagIds.includes(tag.id)
-                                    ? "text-white"
-                                    : "text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground"
-                            )}
-                        >
-                            {tag.name}
-                        </button>
-                        {!running && (
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <button
-                                        type="button"
-                                        onClick={(e) => e.stopPropagation()}
-                                        disabled={isDisabled || isDeletingTag}
-                                        className={cn(
-                                            "p-1 sm:p-1.5 rounded-r-full hover:bg-black/10 transition-colors",
-                                            selectedTagIds.includes(tag.id) ? "text-white hover:bg-white/20" : "text-muted-foreground hover:text-foreground"
-                                        )}
-                                        aria-label={`Options for ${tag.name}`}
-                                    >
-                                        <MoreHorizontal className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                                    </button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    <DropdownMenuItem
-                                        className="text-destructive focus:text-destructive"
-                                        onClick={() => {
-                                            setSelectedTagIds((prev) => prev.filter((id) => id !== tag.id))
-                                            onDeleteTag(tag.id)
-                                        }}
-                                        disabled={isDeletingTag}
-                                    >
-                                        Delete tag
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
+                    <div key={tag.id} className={cn("relative group mx-0.5", running && "opacity-70")}>
+                        {tagToEdit?.id === tag.id ? (
+                            <div
+                                className="rounded-full border shadow-sm flex items-center gap-1 pr-0.5 py-0.5 pl-2.5 sm:pl-3 min-w-[120px]"
+                                style={{ backgroundColor: editTagColor, borderColor: "rgba(255,255,255,0.3)" }}
+                            >
+                                <Input
+                                    value={editTagName}
+                                    onChange={(e) => setEditTagName(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                            e.preventDefault()
+                                            if (editTagName.trim() && onUpdateTag) {
+                                                onUpdateTag(tag.id, editTagName.trim(), editTagColor)
+                                                setTagToEdit(null)
+                                                toast.success("Tag updated")
+                                            } else if (!editTagName.trim()) toast.error("Tag name cannot be empty")
+                                        }
+                                        if (e.key === "Escape") setTagToEdit(null)
+                                    }}
+                                    className="h-6 sm:h-7 border-0 bg-white/90 text-xs sm:text-sm rounded-full flex-1 min-w-0 px-2.5 focus-visible:ring-0"
+                                    placeholder="Tag name"
+                                    autoFocus
+                                />
+                                <input
+                                    type="color"
+                                    value={editTagColor}
+                                    onChange={(e) => setEditTagColor(e.target.value)}
+                                    className="w-6 h-6 rounded-full border-0 cursor-pointer bg-transparent p-0 [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-full [&::-webkit-color-swatch]:border-0"
+                                    aria-label="Tag color"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (editTagName.trim() && onUpdateTag) {
+                                            onUpdateTag(tag.id, editTagName.trim(), editTagColor)
+                                            setTagToEdit(null)
+                                            toast.success("Tag updated")
+                                        } else if (!editTagName.trim()) toast.error("Tag name cannot be empty")
+                                    }}
+                                    className="rounded-full p-1 hover:bg-white/20 text-white"
+                                    aria-label="Save"
+                                >
+                                    <Check className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setTagToEdit(null)}
+                                    className="rounded-full p-1 hover:bg-white/20 text-white"
+                                    aria-label="Cancel"
+                                >
+                                    <X className="h-3.5 w-3.5" />
+                                </button>
+                            </div>
+                        ) : (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={() => !running && toggleTag(tag.id)}
+                                    disabled={isDisabled || running}
+                                    className={cn(
+                                        "rounded-full border text-xs sm:text-sm transition-all px-2.5 py-1 sm:px-3 sm:py-1.5 text-left",
+                                        "group-hover:pr-6",
+                                        selectedTagIds.includes(tag.id)
+                                            ? "border-transparent shadow-sm text-white"
+                                            : "border-muted-foreground/20 text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground"
+                                    )}
+                                    style={selectedTagIds.includes(tag.id) ? { backgroundColor: tag.color } : {}}
+                                >
+                                    {tag.name}
+                                </button>
+                                {!running && (
+                                    <>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    disabled={isDisabled || isDeletingTag}
+                                                    className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity hover:cursor-pointer pointer-events-none group-hover:pointer-events-auto data-[state=open]:opacity-100 data-[state=open]:pointer-events-auto"
+                                                    aria-label={`Options for ${tag.name}`}
+                                                    style={{ color: selectedTagIds.includes(tag.id) ? "white" : undefined }}
+                                                >
+                                                    <MoreHorizontal className="h-4 w-4 mr-0.5" />
+                                                </button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem
+                                                    onClick={() => {
+                                                        setTagToEdit(tag)
+                                                        setEditTagName(tag.name)
+                                                        setEditTagColor(tag.color)
+                                                    }}
+                                                    disabled={isDeletingTag}
+                                                >
+                                                    Edit tag
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    className="text-destructive focus:text-destructive"
+                                                    onClick={() => {
+                                                        setSelectedTagIds((prev) => prev.filter((id) => id !== tag.id))
+                                                        onDeleteTag(tag.id)
+                                                    }}
+                                                    disabled={isDeletingTag}
+                                                >
+                                                    Delete tag
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </>
+                                )}
+                            </>
                         )}
                     </div>
                 ))}

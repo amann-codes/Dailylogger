@@ -7,7 +7,7 @@ import { RecentActivities } from "@/components/logs/recentActivities"
 import { createLog } from "@/lib/actions/createLog"
 import getRunningLog from "@/lib/actions/getRunningLog"
 import { udpateLogStatus } from "@/lib/actions/updateLogStatus"
-import { getTags, createTag, deleteTag } from "@/lib/actions/tags"
+import { getTags, createTag, updateTag, deleteTag } from "@/lib/actions/tags"
 import { toast } from "sonner"
 import { Header } from "@/components/layout/header"
 import { Tag } from "@/lib/types"
@@ -68,8 +68,21 @@ export default function ActivityPage() {
         },
     })
 
+    const { mutate: updateTagMutation } = useMutation({
+        mutationFn: ({ id, name, color }: { id: string; name: string; color: string }) =>
+            updateTag(id, name, color),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["tags"] })
+            queryClient.invalidateQueries({ queryKey: ["logs"] })
+            queryClient.invalidateQueries({ queryKey: ["recent-logs"] })
+        },
+        onError: (error) => {
+            toast.error(error instanceof Error ? error.message : "Failed to update tag")
+        },
+    })
+
     return (
-        <div className="flex flex-col min-h-screen w-full sm:items-center sm:pt-8 pt-4 sm:space-y-4 space-y-2 pb-8 bg-gradient-to-br from-sky-50 via-slate-50 to-emerald-50">
+        <div className="flex flex-col min-h-screen w-full sm:items-center pt-14 sm:pt-16 sm:space-y-4 space-y-2 pb-8 bg-gradient-to-br from-sky-50 via-slate-50 to-emerald-50">
             <Header />
             <CreateLog
                 handleCreate={(description, tagIds, startedAtISO) =>
@@ -82,6 +95,7 @@ export default function ActivityPage() {
                 runningLog={getRunningLogQuery.data || null}
                 tags={tagsQuery.data || []}
                 onCreateTag={handleCreateTag}
+                onUpdateTag={(tagId, name, color) => updateTagMutation({ id: tagId, name, color })}
                 onDeleteTag={(tagId) => deleteTagMutation(tagId)}
                 isDeletingTag={isDeletingTag}
             />

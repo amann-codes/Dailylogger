@@ -207,23 +207,11 @@ export function LogsDisplay() {
     }
 
     return (
-        <Card className="max-w-2xl w-full sm:rounded-xl rounded-none sm:py-6 py-3">
-            <CardHeader className="flex flex-col gap-3 px-3 sm:px-6">
-                <div className="flex items-center justify-between w-full gap-4 flex-wrap">
+        <Card className="max-w-2xl w-full sm:rounded-xl rounded-none sm:py-6 py-3 border-0 sm:border shadow-sm">
+            <CardHeader className="px-3 sm:px-6">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h2 className="text-base sm:text-xl font-medium">Daily Activities</h2>
                     <div className="flex items-center gap-1.5">
-                        <span className="text-base sm:text-xl font-medium">Daily Activities</span>
-                        <Button
-                            disabled={!getLogsQuery.data || getLogsQuery.data.length === 0}
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => setSort((val) => (val === Sort.desc ? Sort.asc : Sort.desc))}
-                            aria-label={`Sort logs ${sort === Sort.desc ? "ascending" : "descending"}`}
-                        >
-                            <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
-                        </Button>
-                    </div>
-                    <div className="flex items-center gap-2">
                         <div className="flex items-center gap-1">
                             <Button
                                 variant="ghost"
@@ -283,24 +271,38 @@ export function LogsDisplay() {
                             </Button>
                         </div>
                         {getLogsQuery.data && getLogsQuery.data.length > 0 && (
-                            <div className="hidden sm:flex border rounded-md p-0.5">
+                            <>
+                                <div className="hidden sm:flex border rounded-md p-0.5">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleViewModeChange("card")}
+                                        className={`h-7 w-7 p-0 ${viewMode === "card" ? "bg-accent" : ""}`}
+                                        aria-label="Card view"
+                                    >
+                                        <List className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleViewModeChange("table")}
+                                        className={`h-7 w-7 p-0 ${viewMode === "table" ? "bg-accent" : ""}`}
+                                        aria-label="Table view"
+                                    >
+                                        <TableIcon className="h-3.5 w-3.5" />
+                                    </Button>
+                                </div>
                                 <Button
+                                    disabled={!getLogsQuery.data || getLogsQuery.data.length === 0}
                                     variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleViewModeChange("card")}
-                                    className={`h-7 w-7 p-0 ${viewMode === "card" ? "bg-accent" : ""}`}
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    onClick={() => setSort((val) => (val === Sort.desc ? Sort.asc : Sort.desc))}
+                                    aria-label={sort === Sort.desc ? "Sort ascending" : "Sort descending"}
                                 >
-                                    <List className="h-3.5 w-3.5" />
+                                    <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
                                 </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleViewModeChange("table")}
-                                    className={`h-7 w-7 p-0 ${viewMode === "table" ? "bg-accent" : ""}`}
-                                >
-                                    <TableIcon className="h-3.5 w-3.5" />
-                                </Button>
-                            </div>
+                            </>
                         )}
                     </div>
                 </div>
