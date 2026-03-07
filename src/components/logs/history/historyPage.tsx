@@ -7,7 +7,7 @@ import { updateLog } from "@/lib/actions/updateLog"
 import { deleteLog } from "@/lib/actions/deleteLog"
 import { getTags } from "@/lib/actions/tags"
 import { LogWithTags, Sort } from "@/lib/types"
-import { formatDuration, extractUrls, getDomain } from "@/lib/domain"
+import { formatDuration, extractUrls, getDomain, isFutureDateTime } from "@/lib/domain"
 import { toast } from "sonner"
 import { Header } from "@/components/layout/header"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -194,6 +194,10 @@ export function HistoryPage() {
             const [hours, minutes] = startTimeString.split(':').map(Number)
             newStartedAt.setHours(hours, minutes, 0, 0)
         }
+        if (isFutureDateTime(newStartedAt)) {
+            const now = new Date()
+            newStartedAt.setTime(now.getTime())
+        }
 
         let newFinishedAt: Date | null = null
         if (finishTimeString) {
@@ -201,6 +205,10 @@ export function HistoryPage() {
             const [hours, minutes] = finishTimeString.split(':').map(Number)
             baseDate.setHours(hours, minutes, 0, 0)
             newFinishedAt = baseDate
+            if (isFutureDateTime(newFinishedAt)) {
+                const now = new Date()
+                newFinishedAt = new Date(now.getTime())
+            }
         }
 
         if (newFinishedAt && newStartedAt.getTime() > newFinishedAt.getTime()) {

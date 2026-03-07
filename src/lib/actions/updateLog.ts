@@ -3,12 +3,19 @@
 import { Log } from "../types";
 import { getSession } from "./getSession";
 import prisma from "@/lib/db";
-import { calculateDuration, validateTimeRange } from "@/lib/domain";
+import { calculateDuration, validateTimeRange, isFutureDateTime } from "@/lib/domain";
 
 export async function updateLog(data: Log) {
     const { user } = await getSession();
     if (!user) {
         throw new Error("User must be logged in to update the log")
+    }
+
+    if (isFutureDateTime(data.startedAt)) {
+        throw new Error("Activity start time cannot be in the future")
+    }
+    if (data.finishedAt && isFutureDateTime(data.finishedAt)) {
+        throw new Error("Activity end time cannot be in the future")
     }
 
     // Validate time range if both times are provided

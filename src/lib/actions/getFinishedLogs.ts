@@ -3,7 +3,7 @@
 import { getSession } from "@/lib/actions/getSession"
 import prisma from "@/lib/db"
 import { LogWithTags, Sort } from "../types"
-import { startOfDay, endOfDay } from "@/lib/domain"
+import { startOfDay, endOfDay, isFutureDate } from "@/lib/domain"
 
 export async function getFinishedLogs(sort: Sort, date?: Date): Promise<LogWithTags[]> {
     try {
@@ -12,7 +12,11 @@ export async function getFinishedLogs(sort: Sort, date?: Date): Promise<LogWithT
             throw new Error("User must be logged in to get logs")
         }
 
-        const inputDate = date ? new Date(date) : new Date()
+        let inputDate = date ? new Date(date) : new Date()
+        // Don't allow requesting logs for future dates — clamp to today
+        if (isFutureDate(inputDate)) {
+            inputDate = new Date()
+        }
         const dayStart = startOfDay(inputDate)
         const dayEnd = endOfDay(inputDate)
 

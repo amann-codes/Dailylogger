@@ -9,7 +9,7 @@ import { getFinishedLogs } from "@/lib/actions/getFinishedLogs"
 import { updateLog } from "@/lib/actions/updateLog"
 import { deleteLog } from "@/lib/actions/deleteLog"
 import { LogWithTags, Sort } from "@/lib/types"
-import { formatDuration, extractUrls, getDomain } from "@/lib/domain"
+import { formatDuration, extractUrls, getDomain, startOfDay, isFutureDate, isFutureDateTime } from "@/lib/domain"
 import { ArrowUpDown, CalendarFold, ChevronLeft, ChevronRight, ExternalLink, List, Loader2, Pencil, TableIcon, Trash2 } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent } from "@/components/ui/dropdown-menu"
@@ -149,6 +149,10 @@ export function LogsDisplay() {
             const [hours, minutes] = startTimeString.split(':').map(Number)
             newStartedAt.setHours(hours, minutes, 0, 0)
         }
+        if (isFutureDateTime(newStartedAt)) {
+            const now = new Date()
+            newStartedAt.setTime(now.getTime())
+        }
 
         let newFinishedAt: Date | null = null
         if (finishTimeString) {
@@ -156,6 +160,10 @@ export function LogsDisplay() {
             const [hours, minutes] = finishTimeString.split(':').map(Number)
             baseDate.setHours(hours, minutes, 0, 0)
             newFinishedAt = baseDate
+            if (isFutureDateTime(newFinishedAt)) {
+                const now = new Date()
+                newFinishedAt = new Date(now.getTime())
+            }
         }
 
         if (newFinishedAt && newStartedAt.getTime() > newFinishedAt.getTime()) {
@@ -195,7 +203,7 @@ export function LogsDisplay() {
     return (
         <Card className="max-w-2xl w-full sm:rounded-xl rounded-none sm:py-6 py-3">
             <CardHeader className="flex flex-col gap-3 px-3 sm:px-6">
-                <div className="flex items-center justify-between w-full">
+                <div className="flex items-center justify-between w-full gap-4 flex-wrap">
                     <div className="flex items-center gap-1.5">
                         <span className="text-base sm:text-xl font-medium">Daily Activities</span>
                         <Button
@@ -209,80 +217,86 @@ export function LogsDisplay() {
                             <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
                         </Button>
                     </div>
-                    {getLogsQuery.data && getLogsQuery.data.length > 0 && (
-                        <div className="hidden sm:flex border rounded-md p-0.5">
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
                             <Button
                                 variant="ghost"
-                                size="sm"
-                                onClick={() => handleViewModeChange("card")}
-                                className={`h-7 w-7 p-0 ${viewMode === "card" ? "bg-accent" : ""}`}
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => {
+                                    const prev = new Date(date)
+                                    prev.setDate(prev.getDate() - 1)
+                                    setDate(prev)
+                                }}
+                                aria-label="Previous day"
                             >
-                                <List className="h-3.5 w-3.5" />
+                                <ChevronLeft className="h-4 w-4" />
                             </Button>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        className="flex items-center gap-2 px-3 py-2 h-8 text-sm font-medium"
+                                        aria-label="Select date"
+                                    >
+                                        <CalendarFold className="h-3.5 w-3.5" />
+                                        <span>{formatDateDisplay(date)}</span>
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="center" className="w-auto p-2 bg-background border rounded-md shadow-lg">
+                                    <Calendar
+                                        mode="single"
+                                        selected={date}
+                                        disabled={(d) => isFutureDate(d)}
+                                        onSelect={(newDate) => {
+                                            if (newDate) {
+                                                const normalized = new Date(newDate)
+                                                normalized.setHours(0, 0, 0, 0)
+                                                setDate(isFutureDate(normalized) ? startOfDay(new Date()) : normalized)
+                                            } else {
+                                                setDate(startOfDay(new Date()))
+                                            }
+                                        }}
+                                        className="rounded-md border-none"
+                                    />
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                             <Button
                                 variant="ghost"
-                                size="sm"
-                                onClick={() => handleViewModeChange("table")}
-                                className={`h-7 w-7 p-0 ${viewMode === "table" ? "bg-accent" : ""}`}
+                                size="icon"
+                                className="h-8 w-8"
+                                disabled={startOfDay(date).getTime() >= startOfDay(new Date()).getTime()}
+                                onClick={() => {
+                                    const next = new Date(date)
+                                    next.setDate(next.getDate() + 1)
+                                    if (!isFutureDate(next)) setDate(next)
+                                }}
+                                aria-label="Next day"
                             >
-                                <TableIcon className="h-3.5 w-3.5" />
+                                <ChevronRight className="h-4 w-4" />
                             </Button>
                         </div>
-                    )}
-                </div>
-                <div className="flex items-center justify-center gap-1 w-full">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => {
-                            const prev = new Date(date)
-                            prev.setDate(prev.getDate() - 1)
-                            setDate(prev)
-                        }}
-                        aria-label="Previous day"
-                    >
-                        <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button
-                                variant="outline"
-                                className="flex items-center gap-2 px-3 py-2 h-8 text-sm font-medium"
-                                aria-label="Select date"
-                            >
-                                <CalendarFold className="h-3.5 w-3.5" />
-                                <span>{formatDateDisplay(date)}</span>
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="center" className="w-auto p-2 bg-background border rounded-md shadow-lg">
-                            <Calendar
-                                mode="single"
-                                selected={date}
-                                onSelect={(newDate) => {
-                                    if (newDate) {
-                                        setDate(new Date(newDate.setHours(0, 0, 0, 0)))
-                                    } else {
-                                        setDate(new Date())
-                                    }
-                                }}
-                                className="rounded-md border-none"
-                            />
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => {
-                            const next = new Date(date)
-                            next.setDate(next.getDate() + 1)
-                            setDate(next)
-                        }}
-                        aria-label="Next day"
-                    >
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
+                        {getLogsQuery.data && getLogsQuery.data.length > 0 && (
+                            <div className="hidden sm:flex border rounded-md p-0.5">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleViewModeChange("card")}
+                                    className={`h-7 w-7 p-0 ${viewMode === "card" ? "bg-accent" : ""}`}
+                                >
+                                    <List className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleViewModeChange("table")}
+                                    className={`h-7 w-7 p-0 ${viewMode === "table" ? "bg-accent" : ""}`}
+                                >
+                                    <TableIcon className="h-3.5 w-3.5" />
+                                </Button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </CardHeader>
             <Separator />

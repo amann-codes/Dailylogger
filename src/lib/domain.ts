@@ -85,6 +85,20 @@ export function endOfDay(date: Date): Date {
 }
 
 /**
+ * True if the calendar day (date part only) is after today
+ */
+export function isFutureDate(date: Date): boolean {
+    return startOfDay(date).getTime() > startOfDay(new Date()).getTime()
+}
+
+/**
+ * True if the given timestamp is in the future (after now)
+ */
+export function isFutureDateTime(date: Date): boolean {
+    return new Date(date).getTime() > Date.now()
+}
+
+/**
  * Get date N days ago
  */
 export function daysAgo(days: number): Date {
