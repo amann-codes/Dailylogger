@@ -7,6 +7,8 @@ import { isRunning } from "@/lib/domain";
 type CreateLogInput = {
     description?: string | null;
     tagIds?: string[];
+    /** Start time (ISO) from client so timestamp matches user's timezone. */
+    startedAtISO?: string;
 }
 
 export async function createLog(data: CreateLogInput) {
@@ -29,10 +31,11 @@ export async function createLog(data: CreateLogInput) {
             throw new Error("You already have a running activity. Stop it first before starting a new one.")
         }
 
+        const startedAt = data.startedAtISO ? new Date(data.startedAtISO) : new Date()
         const log = await prisma.log.create({
             data: {
                 description: data.description || null,
-                startedAt: new Date(),
+                startedAt,
                 finishedAt: null,
                 duration: null,
                 userId,
@@ -45,6 +48,20 @@ export async function createLog(data: CreateLogInput) {
 
         if (!log) {
             throw new Error("Failed to create activity")
+        }
+
+        // Keep Tag.logIds in sync: add this log id to each tag's logIds
+        const tagIds = data.tagIds || []
+        for (const tagId of tagIds) {
+            const tag = await prisma.tag.findUnique({
+                where: { id: tagId, userId }
+            })
+            if (tag && !tag.logIds.includes(log.id)) {
+                await prisma.tag.update({
+                    where: { id: tagId },
+                    data: { logIds: [...tag.logIds, log.id] }
+                })
+            }
         }
 
         return log

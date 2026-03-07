@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { getRecentLogs } from "@/lib/actions/getRecentLogs"
 import { LogWithTags } from "@/lib/types"
+import { daysAgo } from "@/lib/domain"
 import { Activity, ChevronRight, ExternalLink, Loader2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -63,10 +64,11 @@ function TagsDisplay({ tags }: { tags: LogWithTags["tags"] }) {
 
 export function RecentActivities() {
     const [isExpanded, setIsExpanded] = useState(false)
+    const sinceISO = useMemo(() => daysAgo(7).toISOString(), [])
 
     const { data: logs, isLoading, isError, error, isFetching } = useQuery<LogWithTags[], Error>({
-        queryKey: ["recent-logs"],
-        queryFn: getRecentLogs,
+        queryKey: ["recent-logs", sinceISO],
+        queryFn: () => getRecentLogs(sinceISO),
         staleTime: 0,
         refetchOnMount: true,
     })

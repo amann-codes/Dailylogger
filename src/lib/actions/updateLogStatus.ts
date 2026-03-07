@@ -4,7 +4,8 @@ import { getSession } from "./getSession"
 import prisma from "../db"
 import { calculateDuration } from "@/lib/domain"
 
-export const udpateLogStatus = async () => {
+/** Optional finished-at (ISO) from client so timestamp matches user's timezone. */
+export const udpateLogStatus = async (finishedAtISO?: string) => {
     const { user } = await getSession();
     if (!user) {
         throw new Error("User must be logged in to update logs");
@@ -22,7 +23,7 @@ export const udpateLogStatus = async () => {
         throw new Error("No running activity found to stop")
     }
 
-    const finishedAt = new Date()
+    const finishedAt = finishedAtISO ? new Date(finishedAtISO) : new Date()
     const duration = calculateDuration(log.startedAt, finishedAt)
 
     const updatedLog = await prisma.log.update({

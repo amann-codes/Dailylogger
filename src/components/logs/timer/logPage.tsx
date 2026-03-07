@@ -7,7 +7,7 @@ import { RecentActivities } from "@/components/logs/recentActivities"
 import { createLog } from "@/lib/actions/createLog"
 import getRunningLog from "@/lib/actions/getRunningLog"
 import { udpateLogStatus } from "@/lib/actions/updateLogStatus"
-import { getTags, createTag } from "@/lib/actions/tags"
+import { getTags, createTag, deleteTag } from "@/lib/actions/tags"
 import { toast } from "sonner"
 import { Header } from "@/components/layout/header"
 import { Tag } from "@/lib/types"
@@ -37,7 +37,7 @@ export default function ActivityPage() {
     })
 
     const { mutate: updateLogMutation, isPending: isUpdating } = useMutation({
-        mutationFn: udpateLogStatus,
+        mutationFn: (finishedAtISO?: string) => udpateLogStatus(finishedAtISO),
         onSuccess: () => {
             toast.success("Activity recorded")
             queryClient.invalidateQueries({ queryKey: ["logs"] })
@@ -55,18 +55,35 @@ export default function ActivityPage() {
         return tag
     }
 
+    const { mutate: deleteTagMutation, isPending: isDeletingTag } = useMutation({
+        mutationFn: deleteTag,
+        onSuccess: () => {
+            toast.success("Tag deleted")
+            queryClient.invalidateQueries({ queryKey: ["tags"] })
+            queryClient.invalidateQueries({ queryKey: ["logs"] })
+            queryClient.invalidateQueries({ queryKey: ["recent-logs"] })
+        },
+        onError: (error) => {
+            toast.error(error instanceof Error ? error.message : "Failed to delete tag")
+        },
+    })
+
     return (
         <div className="flex flex-col min-h-screen w-full sm:items-center sm:pt-8 pt-4 sm:space-y-4 space-y-2 pb-8 bg-gradient-to-br from-sky-50 via-slate-50 to-emerald-50">
             <Header />
             <CreateLog
-                handleCreate={(description, tagIds) => createLogMutation({ description, tagIds })}
-                handleUpdate={updateLogMutation}
+                handleCreate={(description, tagIds, startedAtISO) =>
+                    createLogMutation({ description, tagIds, startedAtISO })
+                }
+                handleUpdate={(finishedAtISO) => updateLogMutation(finishedAtISO)}
                 isCreating={isCreating}
                 isUpdating={isUpdating}
                 isFetchingRunningLog={getRunningLogQuery.isFetching}
                 runningLog={getRunningLogQuery.data || null}
                 tags={tagsQuery.data || []}
                 onCreateTag={handleCreateTag}
+                onDeleteTag={(tagId) => deleteTagMutation(tagId)}
+                isDeletingTag={isDeletingTag}
             />
             <LogsDisplay />
             <RecentActivities />

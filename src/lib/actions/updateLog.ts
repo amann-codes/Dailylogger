@@ -28,6 +28,15 @@ export async function updateLog(data: Log) {
         ? calculateDuration(data.startedAt, data.finishedAt)
         : null
 
+    const newTagIds = data.tagIds ?? undefined
+    const previousLog = newTagIds !== undefined
+        ? await prisma.log.findUnique({
+            where: { id: data.id, userId: user.id },
+            select: { tagIds: true }
+        })
+        : null
+    const previousTagIds = previousLog?.tagIds ?? []
+
     const log = await prisma.log.update({
         where: { id: data.id },
         data: {
@@ -35,12 +44,40 @@ export async function updateLog(data: Log) {
             startedAt: data.startedAt,
             finishedAt: data.finishedAt,
             duration,
-            tagIds: data.tagIds || undefined
+            ...(newTagIds !== undefined ? { tagIds: newTagIds } : {})
         },
         include: {
             tags: true
         }
     })
+
+    // Keep Tag.logIds in sync when tagIds changed
+    if (newTagIds !== undefined) {
+        const toAdd = newTagIds.filter((id) => !previousTagIds.includes(id))
+        const toRemove = previousTagIds.filter((id) => !newTagIds.includes(id))
+        for (const tagId of toAdd) {
+            const tag = await prisma.tag.findUnique({
+                where: { id: tagId, userId: user.id }
+            })
+            if (tag && !tag.logIds.includes(log.id)) {
+                await prisma.tag.update({
+                    where: { id: tagId },
+                    data: { logIds: [...tag.logIds, log.id] }
+                })
+            }
+        }
+        for (const tagId of toRemove) {
+            const tag = await prisma.tag.findUnique({
+                where: { id: tagId, userId: user.id }
+            })
+            if (tag && tag.logIds.includes(log.id)) {
+                await prisma.tag.update({
+                    where: { id: tagId },
+                    data: { logIds: tag.logIds.filter((lid) => lid !== log.id) }
+                })
+            }
+        }
+    }
 
     return log
 }

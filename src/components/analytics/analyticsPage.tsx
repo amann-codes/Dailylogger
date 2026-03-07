@@ -1,8 +1,9 @@
 "use client"
 
+import { useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { getAnalytics } from "@/lib/actions/analytics"
-import { formatDuration } from "@/lib/domain"
+import { formatDuration, startOfDay, endOfDay, daysAgo } from "@/lib/domain"
 import { Header } from "@/components/layout/header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -32,10 +33,24 @@ import {
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 
+const ANALYTICS_DAYS = 30
+
 export function AnalyticsPage() {
+    const range = useMemo(() => {
+        const now = new Date()
+        const rangeStart = startOfDay(daysAgo(ANALYTICS_DAYS))
+        const rangeEnd = endOfDay(now)
+        const todayStart = startOfDay(now)
+        return {
+            rangeStartISO: rangeStart.toISOString(),
+            rangeEndISO: rangeEnd.toISOString(),
+            todayStartISO: todayStart.toISOString(),
+        }
+    }, [])
+
     const { data, isLoading, isError, error } = useQuery({
-        queryKey: ["analytics"],
-        queryFn: () => getAnalytics({ days: 30 }),
+        queryKey: ["analytics", range.rangeStartISO, range.rangeEndISO],
+        queryFn: () => getAnalytics(range),
     })
 
     if (isLoading) {

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { getAllLogs } from "@/lib/actions/getAllLogs"
 import { updateLog } from "@/lib/actions/updateLog"
@@ -19,6 +20,7 @@ import { Separator } from "@/components/ui/separator"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog"
 import {
+    ArrowLeft,
     ArrowUpDown,
     ChevronLeft,
     ChevronRight,
@@ -105,6 +107,7 @@ const formatDate = (date: Date): string => {
 }
 
 export function HistoryPage() {
+    const router = useRouter()
     const [sort, setSort] = useState<Sort>(Sort.desc)
     const [page, setPage] = useState(1)
     const [search, setSearch] = useState("")
@@ -244,6 +247,20 @@ export function HistoryPage() {
                 <CardHeader className="flex flex-col gap-3 sm:gap-4 px-3 sm:px-6">
                     <div className="flex flex-row justify-between items-center gap-2">
                         <div className="flex items-center gap-2">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 sm:h-9 sm:w-9 shrink-0"
+                                onClick={() => router.back()}
+                                aria-label="Go back"
+                            >
+                                <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+                            </Button>
+                            <Link href="/">
+                                <Button variant="ghost" size="sm" className="h-8 px-2 sm:px-3 text-xs sm:text-sm gap-1.5">
+                                    Activity
+                                </Button>
+                            </Link>
                             <History className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
                             <span className="text-base sm:text-xl font-medium">History</span>
                             {total > 0 && (

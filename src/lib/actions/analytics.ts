@@ -6,7 +6,12 @@ import { DailyStats, TagStats } from "../types"
 import { startOfDay } from "@/lib/domain"
 
 type AnalyticsParams = {
-    days?: number // Number of days to analyze (default 30)
+    /** Range start (ISO) from client so timezone is correct. */
+    rangeStartISO: string
+    /** Range end (ISO) from client so timezone is correct. */
+    rangeEndISO: string
+    /** Start of "today" (ISO) from client for streak calculation. */
+    todayStartISO: string
 }
 
 type AnalyticsResponse = {
@@ -20,22 +25,24 @@ type AnalyticsResponse = {
     dailyGoal: number
 }
 
-export async function getAnalytics({ days = 30 }: AnalyticsParams = {}): Promise<AnalyticsResponse> {
+export async function getAnalytics({ rangeStartISO, rangeEndISO, todayStartISO }: AnalyticsParams): Promise<AnalyticsResponse> {
     const { user } = await getSession()
     if (!user) {
         throw new Error("User must be logged in to get analytics")
     }
 
-    const startDate = new Date()
-    startDate.setDate(startDate.getDate() - days)
-    startDate.setHours(0, 0, 0, 0)
+    const rangeStart = new Date(rangeStartISO)
+    const rangeEnd = new Date(rangeEndISO)
 
-    // Get all finished logs in the time range
+    // Get all finished logs in the time range (range from client = user's timezone)
     const logs = await prisma.log.findMany({
         where: {
             userId: user.id,
             finishedAt: { not: null },
-            startedAt: { gte: startDate }
+            startedAt: {
+                gte: rangeStart,
+                lte: rangeEnd
+            }
         },
         include: {
             tags: true
@@ -98,8 +105,9 @@ export async function getAnalytics({ days = 30 }: AnalyticsParams = {}): Promise
     const averageMinutesPerDay = daysWithActivity > 0 ? Math.round(totalMinutes / daysWithActivity) : 0
     const longestSession = logs.reduce((max, log) => Math.max(max, log.duration || 0), 0)
 
-    // Calculate streak
-    const currentStreak = calculateStreak(dailyStats)
+    // Calculate streak (use client's "today" so timezone is correct)
+    const todayStart = new Date(todayStartISO)
+    const currentStreak = calculateStreak(dailyStats, todayStart)
 
     return {
         dailyStats,
@@ -113,21 +121,21 @@ export async function getAnalytics({ days = 30 }: AnalyticsParams = {}): Promise
     }
 }
 
-function calculateStreak(dailyStats: DailyStats[]): number {
+function calculateStreak(dailyStats: DailyStats[], todayStart: Date): number {
     if (dailyStats.length === 0) return 0
 
-    const today = startOfDay(new Date())
+    const today = todayStart.getTime()
     const sortedDates = dailyStats
         .map(s => startOfDay(new Date(s.date)).getTime())
         .sort((a, b) => b - a) // Most recent first
 
     let streak = 0
-    let expectedDate = today.getTime()
+    let expectedDate = today
 
     for (const dateTime of sortedDates) {
         // Allow for today or yesterday to start the streak
         if (streak === 0 && dateTime !== expectedDate) {
-            const yesterday = new Date(today)
+            const yesterday = new Date(todayStart)
             yesterday.setDate(yesterday.getDate() - 1)
             if (dateTime === yesterday.getTime()) {
                 expectedDate = yesterday.getTime()
@@ -147,16 +155,18 @@ function calculateStreak(dailyStats: DailyStats[]): number {
     return streak
 }
 
-export async function getDailyTotal(date?: Date): Promise<{ totalMinutes: number; logCount: number }> {
+/** Day boundaries from client (ISO) so "today" uses the user's timezone. */
+export async function getDailyTotal(
+    dayStartISO: string,
+    dayEndISO: string
+): Promise<{ totalMinutes: number; logCount: number }> {
     const { user } = await getSession()
     if (!user) {
         throw new Error("User must be logged in")
     }
 
-    const targetDate = date || new Date()
-    const dayStart = startOfDay(targetDate)
-    const dayEnd = new Date(dayStart)
-    dayEnd.setDate(dayEnd.getDate() + 1)
+    const dayStart = new Date(dayStartISO)
+    const dayEnd = new Date(dayEndISO)
 
     const result = await prisma.log.aggregate({
         where: {
@@ -164,7 +174,7 @@ export async function getDailyTotal(date?: Date): Promise<{ totalMinutes: number
             finishedAt: { not: null },
             startedAt: {
                 gte: dayStart,
-                lt: dayEnd
+                lte: dayEnd
             }
         },
         _sum: {

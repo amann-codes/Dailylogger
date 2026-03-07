@@ -5,19 +5,27 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { LogWithTags, Tag } from "@/lib/types"
-import { ChevronDown, ChevronUp, Plus, X } from "lucide-react"
+import { ChevronDown, ChevronUp, MoreHorizontal, Plus, X } from "lucide-react"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { isRunning, calculateElapsed, formatElapsed, formatTimeString } from "@/lib/domain"
 import { cn } from "@/lib/utils"
 
 type LogProps = {
-    handleCreate: (description?: string, tagIds?: string[]) => void
-    handleUpdate: () => void
+    handleCreate: (description?: string, tagIds?: string[], startedAtISO?: string) => void
+    handleUpdate: (finishedAtISO?: string) => void
     isCreating: boolean
     isUpdating: boolean
     isFetchingRunningLog: boolean
     runningLog: LogWithTags | null
     tags: Tag[]
     onCreateTag: (name: string) => Promise<Tag>
+    onDeleteTag: (tagId: string) => void
+    isDeletingTag?: boolean
 }
 
 export function CreateLog({ 
@@ -28,7 +36,9 @@ export function CreateLog({
     isFetchingRunningLog, 
     runningLog,
     tags,
-    onCreateTag
+    onCreateTag,
+    onDeleteTag,
+    isDeletingTag = false,
 }: LogProps) {
     const [elapsed, setElapsed] = useState(0)
     const [running, setRunning] = useState(false)
@@ -107,12 +117,16 @@ export function CreateLog({
 
     const handleCreateLog = () => {
         start()
-        handleCreate(description.trim() || undefined, selectedTagIds.length > 0 ? selectedTagIds : undefined)
+        handleCreate(
+            description.trim() || undefined,
+            selectedTagIds.length > 0 ? selectedTagIds : undefined,
+            new Date().toISOString()
+        )
     }
 
     const handleUpdateLog = () => {
         if (stop()) {
-            handleUpdate()
+            handleUpdate(new Date().toISOString())
         }
     }
 
@@ -168,22 +182,61 @@ export function CreateLog({
             {/* TAG CHIPS - Subordinate, centered */}
             <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
                 {tags.map(tag => (
-                    <button
+                    <div
                         key={tag.id}
-                        type="button"
-                        onClick={() => !running && toggleTag(tag.id)}
-                        disabled={isDisabled || running}
                         className={cn(
-                            "px-2.5 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm rounded-full border transition-all",
+                            "inline-flex items-center rounded-full border transition-all overflow-hidden",
                             selectedTagIds.includes(tag.id)
-                                ? "border-transparent text-white shadow-sm"
-                                : "border-muted-foreground/20 text-muted-foreground hover:border-muted-foreground/40",
-                            running && "opacity-70 cursor-default"
+                                ? "border-transparent shadow-sm"
+                                : "border-muted-foreground/20",
+                            running && "opacity-70"
                         )}
                         style={selectedTagIds.includes(tag.id) ? { backgroundColor: tag.color } : {}}
                     >
-                        {tag.name}
-                    </button>
+                        <button
+                            type="button"
+                            onClick={() => !running && toggleTag(tag.id)}
+                            disabled={isDisabled || running}
+                            className={cn(
+                                "px-2.5 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm text-left",
+                                selectedTagIds.includes(tag.id)
+                                    ? "text-white"
+                                    : "text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground"
+                            )}
+                        >
+                            {tag.name}
+                        </button>
+                        {!running && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <button
+                                        type="button"
+                                        onClick={(e) => e.stopPropagation()}
+                                        disabled={isDisabled || isDeletingTag}
+                                        className={cn(
+                                            "p-1 sm:p-1.5 rounded-r-full hover:bg-black/10 transition-colors",
+                                            selectedTagIds.includes(tag.id) ? "text-white hover:bg-white/20" : "text-muted-foreground hover:text-foreground"
+                                        )}
+                                        aria-label={`Options for ${tag.name}`}
+                                    >
+                                        <MoreHorizontal className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                                    </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem
+                                        className="text-destructive focus:text-destructive"
+                                        onClick={() => {
+                                            setSelectedTagIds((prev) => prev.filter((id) => id !== tag.id))
+                                            onDeleteTag(tag.id)
+                                        }}
+                                        disabled={isDeletingTag}
+                                    >
+                                        Delete tag
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
+                    </div>
                 ))}
                 {!running && !showTagInput && (
                     <button

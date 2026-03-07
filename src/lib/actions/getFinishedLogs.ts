@@ -3,27 +3,29 @@
 import { getSession } from "@/lib/actions/getSession"
 import prisma from "@/lib/db"
 import { LogWithTags, Sort } from "../types"
-import { startOfDay, endOfDay, isFutureDate } from "@/lib/domain"
 
-export async function getFinishedLogs(sort: Sort, date?: Date): Promise<LogWithTags[]> {
+/**
+ * Get finished logs for a day. Uses dayStart/dayEnd from the client so the
+ * same calendar day is used regardless of server timezone (fixes prod vs dev).
+ */
+export async function getFinishedLogs(
+    sort: Sort,
+    dayStartISO: string,
+    dayEndISO: string
+): Promise<LogWithTags[]> {
     try {
         const { user } = await getSession()
         if (!user) {
             throw new Error("User must be logged in to get logs")
         }
 
-        let inputDate = date ? new Date(date) : new Date()
-        // Don't allow requesting logs for future dates — clamp to today
-        if (isFutureDate(inputDate)) {
-            inputDate = new Date()
-        }
-        const dayStart = startOfDay(inputDate)
-        const dayEnd = endOfDay(inputDate)
+        const dayStart = new Date(dayStartISO)
+        const dayEnd = new Date(dayEndISO)
 
         const logs = await prisma.log.findMany({
             where: {
                 userId: user.id,
-                finishedAt: { not: null }, // Finished = finishedAt is not null
+                finishedAt: { not: null },
                 startedAt: {
                     gte: dayStart,
                     lte: dayEnd,

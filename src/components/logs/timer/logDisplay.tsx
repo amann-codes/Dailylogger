@@ -9,7 +9,7 @@ import { getFinishedLogs } from "@/lib/actions/getFinishedLogs"
 import { updateLog } from "@/lib/actions/updateLog"
 import { deleteLog } from "@/lib/actions/deleteLog"
 import { LogWithTags, Sort } from "@/lib/types"
-import { formatDuration, extractUrls, getDomain, startOfDay, isFutureDate, isFutureDateTime } from "@/lib/domain"
+import { formatDuration, extractUrls, getDomain, startOfDay, endOfDay, isFutureDate, isFutureDateTime } from "@/lib/domain"
 import { ArrowUpDown, CalendarFold, ChevronLeft, ChevronRight, ExternalLink, List, Loader2, Pencil, TableIcon, Trash2 } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent } from "@/components/ui/dropdown-menu"
@@ -102,16 +102,22 @@ export function LogsDisplay() {
         localStorage.setItem(STORAGE_KEY, mode)
     }
 
+    // Use client's day boundaries so "today" is correct in prod (server may be UTC)
+    const dayStart = startOfDay(date)
+    const dayEnd = endOfDay(date)
+    const dayStartISO = dayStart.toISOString()
+    const dayEndISO = dayEnd.toISOString()
+
     const getLogsQuery = useQuery<LogWithTags[], Error>({
-        queryKey: ["logs", sort, date],
-        queryFn: () => getFinishedLogs(sort, date),
+        queryKey: ["logs", sort, dayStartISO, dayEndISO],
+        queryFn: () => getFinishedLogs(sort, dayStartISO, dayEndISO),
     })
 
     const updateLogMutation = useMutation({
         mutationFn: async (updatedData: LogWithTags) => updateLog(updatedData),
         onSuccess: () => {
             toast.success("Activity updated")
-            queryClient.invalidateQueries({ queryKey: ["logs", sort, date] })
+            queryClient.invalidateQueries({ queryKey: ["logs", sort, dayStartISO, dayEndISO] })
             queryClient.invalidateQueries({ queryKey: ["recent-logs"] })
             queryClient.invalidateQueries({ queryKey: ["daily-total"] })
             setLogToEdit(null)
@@ -125,7 +131,7 @@ export function LogsDisplay() {
         mutationFn: async (logId: string) => deleteLog(logId),
         onSuccess: () => {
             toast.success("Activity deleted")
-            queryClient.invalidateQueries({ queryKey: ["logs", sort, date] })
+            queryClient.invalidateQueries({ queryKey: ["logs", sort, dayStartISO, dayEndISO] })
             queryClient.invalidateQueries({ queryKey: ["recent-logs"] })
             queryClient.invalidateQueries({ queryKey: ["daily-total"] })
             setLogToDelete(null)
